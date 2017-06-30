@@ -13,3 +13,6 @@ path = "src/client.rs"
 
 [dependencies]
 sfml = "*"
+bincode = "*"
+serde = "*"
+serde_derive = "*"
