@@ -3,6 +3,7 @@ extern crate serde;
 extern crate serde_derive;
 extern crate bincode;
 extern crate sfml;
+extern crate toml;
 
 pub mod board;
 pub mod drawing;

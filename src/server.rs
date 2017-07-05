@@ -2,6 +2,7 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate bincode;
+extern crate toml;
 
 pub mod srv;
 use srv::{Player, StatusTable};

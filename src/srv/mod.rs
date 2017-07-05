@@ -1,3 +1,6 @@
+pub mod config;
+pub use self::config::Config;
+
 pub mod player;
 pub use self::player::Player;
 

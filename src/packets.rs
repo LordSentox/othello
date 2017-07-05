@@ -16,6 +16,38 @@ impl Packet for PChangeNameRequest {
 	fn id() -> u8 { 0 }
 }
 
+#[derive(Serialize, Deserialize, PartialEq)]
+pub struct PClientList {
+	pub clients: Vec<String>
+}
+
+impl Packet for PClientList {
+	fn bin_size() -> u64 { 1024 }
+	fn id() -> u8 { 1 }
+}
+
+#[derive(Serialize, Deserialize, PartialEq)]
+pub struct PRequestGame {
+	pub sender: String,
+	pub receiver: String
+}
+
+impl Packet for PRequestGame {
+	fn bin_size() -> u64 { 64 }
+	fn id() -> u8 { 2 }
+}
+
+#[derive(Serialize, Deserialize, PartialEq)]
+pub struct PRequestGameResponse {
+	pub request: PRequestGame,
+	pub response: bool
+}
+
+impl Packet for PRequestGameResponse {
+	fn bin_size() -> u64 { 72 }
+	fn id() -> u8 { 3 }
+}
+
 // The Packet trait implements the base functionality of all packets.
 pub trait Packet: Serialize + DeserializeOwned {
 	fn bin_size() -> u64;
@@ -27,13 +59,13 @@ pub trait Packet: Serialize + DeserializeOwned {
 
 		let data: Vec<u8> = match serialize(&self, size) {
 			Ok(data) => data,
-			Err(err) => return false
+			Err(err) => {println!("{}", err); return false; }
 		};
 
 		// Write the id to the stream
 		match tcp_stream.write(&[Self::id(); 1]) {
 			Ok(len) => if len != 1 { return false; },
-			Err(err) => return false
+			Err(err) => { println!("{}", err); return false; }
 		};
 
 		// TODO: What if the second stage fails? The next packets could become
@@ -41,7 +73,7 @@ pub trait Packet: Serialize + DeserializeOwned {
 
 		match tcp_stream.write(&data) {
 			Ok(len) => println!("Sent packet over network, size {}", len),
-			Err(err) => return false
+			Err(err) => { println!("{}", err); return false; }
 		}
 
 		true
