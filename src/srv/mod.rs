@@ -1,6 +1,9 @@
 pub mod config;
 pub use self::config::Config;
 
+pub mod nethandler;
+pub use self::nethandler::*;
+
 pub mod player;
 pub use self::player::Player;
 

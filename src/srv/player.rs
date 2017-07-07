@@ -23,9 +23,9 @@ impl Player {
 	// Handle the player input and stuff.
 	pub fn run(&mut self) {
 		loop {
-			// Read all incoming packets and handle them accordingly.
+			// Try to read the id of a potential
 			let mut id = vec![0; 1];
-			let len = match self.stream.read(&mut id) {
+			let len = match self.stream.peek(&mut id) {
 				Ok(0) => {
 					// The stream has been closed.
 					println!("Connection has been closed by the client.");
@@ -43,7 +43,7 @@ impl Player {
 
 			// Handle the packet according to its id.
 			match id[0] {
-				0 => {
+				PChangeNameRequest::ID => {
 					let mut packet = PChangeNameRequest{name: "unknown".to_string()};
 					packet.read_from_stream(&mut self.stream);
 
@@ -51,6 +51,19 @@ impl Player {
 					lock.name_player(&packet.name, self.stream.peer_addr().unwrap());
 					println!("Renamed player to: {}", &packet.name);
 				},
+				PClientList::ID => {
+					let mut packet = PClientList{clients: Vec::new()};
+					packet.read_from_stream(&mut self.stream);
+
+					let lock = self.status_table.lock().unwrap();
+					packet.clients.clear();
+					for &(ref name, _) in lock.players() {
+						if let &Some(ref name) = name {
+							packet.clients.push(name.clone());
+						}
+					}
+					packet.write_to_stream(&mut self.stream);
+				}
 				_ => println!("Warning. ID [{}] from [{}] is invalid.", id[0], self.stream.peer_addr().unwrap())
 			}
 
@@ -60,4 +73,6 @@ impl Player {
 			assert_eq!(len, 1);
 		}
 	}
+
+
 }

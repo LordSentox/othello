@@ -13,7 +13,7 @@ pub struct PChangeNameRequest {
 
 impl Packet for PChangeNameRequest {
 	fn bin_size() -> u64 { 32 }
-	fn id() -> u8 { 0 }
+	const ID: u8 = 0;
 }
 
 #[derive(Serialize, Deserialize, PartialEq)]
@@ -23,7 +23,7 @@ pub struct PClientList {
 
 impl Packet for PClientList {
 	fn bin_size() -> u64 { 1024 }
-	fn id() -> u8 { 1 }
+	const ID: u8 = 1;
 }
 
 #[derive(Serialize, Deserialize, PartialEq)]
@@ -34,7 +34,7 @@ pub struct PRequestGame {
 
 impl Packet for PRequestGame {
 	fn bin_size() -> u64 { 64 }
-	fn id() -> u8 { 2 }
+	const ID: u8 = 2;
 }
 
 #[derive(Serialize, Deserialize, PartialEq)]
@@ -45,13 +45,13 @@ pub struct PRequestGameResponse {
 
 impl Packet for PRequestGameResponse {
 	fn bin_size() -> u64 { 72 }
-	fn id() -> u8 { 3 }
+	const ID: u8 = 3;
 }
 
 // The Packet trait implements the base functionality of all packets.
 pub trait Packet: Serialize + DeserializeOwned {
 	fn bin_size() -> u64;
-	fn id() -> u8;
+	const ID: u8;
 
 	fn write_to_stream(&self, tcp_stream: &mut TcpStream) -> bool
 	where Self: Sized {
@@ -59,11 +59,11 @@ pub trait Packet: Serialize + DeserializeOwned {
 
 		let data: Vec<u8> = match serialize(&self, size) {
 			Ok(data) => data,
-			Err(err) => {println!("{}", err); return false; }
+			Err(err) => { println!("{}", err); return false; }
 		};
 
 		// Write the id to the stream
-		match tcp_stream.write(&[Self::id(); 1]) {
+		match tcp_stream.write(&[Self::ID; 1]) {
 			Ok(len) => if len != 1 { return false; },
 			Err(err) => { println!("{}", err); return false; }
 		};

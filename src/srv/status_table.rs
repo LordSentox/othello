@@ -68,4 +68,8 @@ impl StatusTable {
 
 		false
 	}
+
+	pub fn players(&self) -> &Vec<(Option<String>, SocketAddr)> {
+		&self.players
+	}
 }

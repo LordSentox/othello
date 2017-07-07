@@ -18,10 +18,13 @@ pub struct Config {
 impl Config {
 	// Load the configuration from the toml file dedicated to the server.
 	pub fn load() -> Result<Config, ReadError> {
-		let mut file = File::open("server.toml");
+		let mut file = match File::open("server.toml") {
+			Ok(file) => file,
+			Err(err) => return Err(ReadError::IO(err))
+		};
+
 		let mut contents = String::new();
-		match file.read_to
-		_string(&mut contents) {
+		match file.read_to_string(&mut contents) {
 			Ok(_) => {},
 			Err(err) => return Err(ReadError::IO(err))
 		}

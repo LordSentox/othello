@@ -1,3 +1,5 @@
+#![feature(associated_consts)]
+
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -6,7 +8,7 @@ extern crate sfml;
 extern crate toml;
 
 pub mod board;
-pub mod drawing;
+pub mod cli;
 pub mod score;
 pub mod packets;
 
