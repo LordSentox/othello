@@ -32,7 +32,7 @@ fn main() {
 				// Push the information of the new, momentarily unnamed player
 				// into the status table.
 				{	let mut lock = status_table.lock().unwrap();
-					lock.add_player(None, stream.peer_addr().expect("Could not identify client address. Also, servers shouldn't panic, so please contact the lazy programmer."));
+					lock.add_player(None, stream.try_clone().expect("Could not clone the stream, which is critical."));
 				}
 
 				println!("A new client has connected: {}", stream.peer_addr().unwrap());

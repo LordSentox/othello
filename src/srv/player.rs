@@ -21,7 +21,7 @@ impl Player {
 	}
 
 	// Handle the player input and stuff.
-	pub fn run(&mut self) {
+	pub fn run(mut self) {
 		loop {
 			// Try to read the id of a potential
 			let mut id = vec![0; 1];
@@ -31,7 +31,7 @@ impl Player {
 					println!("Connection has been closed by the client.");
 
 					let mut lock = self.status_table.lock().unwrap();
-					lock.remove_player(self.stream.peer_addr().unwrap());
+					lock.remove_player(&self);
 					break;
 				},
 				Ok(len) => len,
@@ -48,7 +48,7 @@ impl Player {
 					packet.read_from_stream(&mut self.stream);
 
 					let mut lock = self.status_table.lock().unwrap();
-					lock.name_player(&packet.name, self.stream.peer_addr().unwrap());
+					lock.name_player(&packet.name, &self.stream);
 					println!("Renamed player to: {}", &packet.name);
 				},
 				PClientList::ID => {
@@ -63,7 +63,13 @@ impl Player {
 						}
 					}
 					packet.write_to_stream(&mut self.stream);
-				}
+				},
+				PRequestGame::ID => {
+					// Relay the request to the player. If they already requested a game with the
+					// sender of this packet, this is the packet, that says, that the request has
+					// been accepted. A game will be started, by the other player.
+					
+				},
 				_ => println!("Warning. ID [{}] from [{}] is invalid.", id[0], self.stream.peer_addr().unwrap())
 			}
 
@@ -74,5 +80,7 @@ impl Player {
 		}
 	}
 
-
+	pub fn stream(&self) -> &TcpStream {
+		&self.stream
+	}
 }

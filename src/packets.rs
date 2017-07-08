@@ -28,24 +28,12 @@ impl Packet for PClientList {
 
 #[derive(Serialize, Deserialize, PartialEq)]
 pub struct PRequestGame {
-	pub sender: String,
 	pub receiver: String
 }
 
 impl Packet for PRequestGame {
 	fn bin_size() -> u64 { 64 }
 	const ID: u8 = 2;
-}
-
-#[derive(Serialize, Deserialize, PartialEq)]
-pub struct PRequestGameResponse {
-	pub request: PRequestGame,
-	pub response: bool
-}
-
-impl Packet for PRequestGameResponse {
-	fn bin_size() -> u64 { 72 }
-	const ID: u8 = 3;
 }
 
 // The Packet trait implements the base functionality of all packets.
