@@ -6,6 +6,19 @@ use std::marker::Sized;
 use std::net::TcpStream;
 use std::io::{Read, Write};
 
+// Build an empty Packet for the given id.
+// If it returns an Err, the Packet id is invalid.
+pub fn build(id: u8) -> Result<Box<DownPacket>, ()> {
+	let p: &Packet = match id {
+		PChangeNameRequest::ID => &PChangeNameRequest { name: "unknown".to_string() },
+		PClientList::ID => &PClientList { clients: Vec::new() },
+		PRequestGame::ID => &PRequestGame { receiver: String::new() },
+		_ => return Err(())
+	};
+
+	Ok(p)
+}
+
 #[derive(Serialize, Deserialize, PartialEq)]
 pub struct PChangeNameRequest {
 	pub name: String
@@ -13,7 +26,7 @@ pub struct PChangeNameRequest {
 
 impl Packet for PChangeNameRequest {
 	fn bin_size() -> u64 { 32 }
-	const ID: u8 = 0;
+	fn id() -> u8 { 0 }
 }
 
 #[derive(Serialize, Deserialize, PartialEq)]
@@ -23,7 +36,7 @@ pub struct PClientList {
 
 impl Packet for PClientList {
 	fn bin_size() -> u64 { 1024 }
-	const ID: u8 = 1;
+	fn id() -> u8 { 1 }
 }
 
 #[derive(Serialize, Deserialize, PartialEq)]
@@ -33,14 +46,16 @@ pub struct PRequestGame {
 
 impl Packet for PRequestGame {
 	fn bin_size() -> u64 { 64 }
-	const ID: u8 = 2;
+	fn id() -> u8 { 2 }
 }
 
 // The Packet trait implements the base functionality of all packets.
-pub trait Packet: Serialize + DeserializeOwned {
+pub trait Packet {
 	fn bin_size() -> u64;
-	const ID: u8;
+	fn id() -> u8;
+}
 
+pub trait UpPacket: Packet + Serialize {
 	fn write_to_stream(&self, tcp_stream: &mut TcpStream) -> bool
 	where Self: Sized {
 		let size = Bounded(Self::bin_size() + 1);
@@ -66,7 +81,9 @@ pub trait Packet: Serialize + DeserializeOwned {
 
 		true
 	}
+}
 
+pub trait DownPacket: Packet + DeserializeOwned {
 	fn read_from_stream(&mut self, tcp_stream: &mut TcpStream) {
 		let mut data: Vec<u8> = vec![0; Self::bin_size() as usize];
 

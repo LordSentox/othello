@@ -6,10 +6,11 @@ extern crate serde_derive;
 extern crate bincode;
 extern crate toml;
 
+#[macro_use]
+pub mod packets;
 pub mod srv;
 use srv::{Player, StatusTable};
 
-pub mod packets;
 
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener};
 use std::sync::{Arc, Mutex};

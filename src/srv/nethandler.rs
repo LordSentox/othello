@@ -1,15 +1,16 @@
 use std::sync::{Arc, Mutex, Weak};
 use std::thread;
+#[macro_use]
 use packets::*;
 use super::Client;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener, TcpStream};
-use std::io;
+use std::io::{Error as IOError, Read};
 use std::collections::HashMap;
 
 pub type ClientId = usize;
 use std::usize::MAX as ClientIdMAX;
 
-pub type ClientMap = HashMap<ClientId, Client>;
+pub type ClientMap = HashMap<ClientId, Arc<Mutex<Client>>>;
 
 pub struct NetHandler {
 	listener: TcpListener,
@@ -35,7 +36,7 @@ fn search_free_id<T>(start: ClientId, map: &HashMap<ClientId, T>) -> Option<Clie
 }
 
 impl NetHandler {
-	pub fn new(port: u16) -> Result<NetHandler, io::Error> {
+	pub fn new(port: u16) -> Result<NetHandler, IOError> {
 		let listener = match TcpListener::bind(SocketAddr::V4(SocketAddrV4::new(
 								Ipv4Addr::new(127, 0, 0, 1), port))) {
 			Ok(listener) => listener,
@@ -57,20 +58,22 @@ impl NetHandler {
 				match stream {
 					Ok(stream) => {
 						// Assign an unused id to the new client.
-						{
+						let new_client = {
 							let mut clients_lock = self.clients.lock().unwrap();
 							start_id = match search_free_id(start_id + 1, &clients_lock) {
 								Some(id) => id,
 								None => { println!("Could not find a free id. Denying client."); continue; }
 							};
-							let new_client = Client::new(start_id,
+							let new_client = Arc::new(Mutex::new(Client::new(start_id,
 												stream.try_clone().expect("Could not clone stream, which is critical."),
-												Arc::downgrade(&self.clients));
-							clients_lock.insert(start_id, new_client);
-						}
+												Arc::downgrade(&self.clients))));
+							clients_lock.insert(start_id, new_client.clone());
+							new_client // Extend the lifetime of the new client
+						};
+
 						// This is an asynchronous call. It reads all the packets for the given
 						// client id. Every client has it's own read thread this way.
-						self.handle_incoming_packets(start_id);
+						self.handle_incoming_packets(start_id, new_client);
 					},
 					Err(err) => println!("Client failed to establish connection: {}", err)
 				}
@@ -78,16 +81,34 @@ impl NetHandler {
 		}
 	}
 
-	fn handle_incoming_packets(&self, id: ClientId) {
-		let clients_lock = self.clients.lock().unwrap();
-		let client: &Client = clients_lock.get(&id).unwrap();
+	fn handle_incoming_packets(&self, cid: ClientId, client: Arc<Mutex<Client>>) {
+		let mut stream = client.lock().unwrap().stream().try_clone().expect("Failed to clone stream, which is critical.");
+		let clients_map = self.clients.clone();
 
-		let stream_clone = client.stream().try_clone().expect("Failed to clone stream, which is critical.");
-		let clients_map_clone = self.clients.clone();
+		thread::spawn(move || { loop {
+			// Read the packet id or detect that the stream has been closed and clean up.
+			let mut pid = vec![0; 1];
+			let len = match stream.read(&mut pid) {
+				Ok(0) => {
+					// The stream has been closed.
+					println!("Connection has been closed by the client.");
 
-		thread::spawn(move || {
-			
-		});
+					let mut lock = clients_map.lock().unwrap();
+					lock.remove(&cid);
+					break;
+				},
+				Ok(len) => len,
+				Err(err) => {
+					println!("Error reading packet id: {}", err);
+					continue;
+				}
+			};
+
+			assert_eq!(len, 1);
+			let pid = pid[0];
+
+			let packet = read_packet!(pid, stream);
+		}});
 	}
 }
 
@@ -99,7 +120,7 @@ impl NetClientMap for ClientMap {
 	fn broadcast<P>(&mut self, p: &P) -> bool where P: Packet {
 		let mut one_failed = false;
 		for (ref id, ref mut client) in self.iter_mut() {
-			one_failed |= !client.send(p)
+			one_failed |= !client.lock().unwrap().send(p)
 		}
 		one_failed
 	}
