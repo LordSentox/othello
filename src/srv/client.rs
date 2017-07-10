@@ -77,8 +77,7 @@ impl Client {
 		self.pending_request = Some(target.clone());
 
 		let target_client_arc = target_client.upgrade().unwrap();
-		let target_client_lock = target_client_arc.read().unwrap();
-		if Some(self.name.clone()) == target_client_lock.pending_request {
+		if Some(self.name.clone()) == target_client_arc.read().unwrap().pending_request {
 			// The target has already requested a game from this client, so a
 			// game should be started.
 			unimplemented!();

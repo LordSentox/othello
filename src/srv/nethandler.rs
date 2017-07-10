@@ -70,8 +70,7 @@ impl NetHandler {
 	pub fn get_by_name(&self, name: &String) -> Option<Weak<RwLock<Client>>> {
 		for (_, ref client) in &self.clients {
 			let client_arc = client.upgrade().unwrap();
-			let client_lock = client_arc.read().unwrap();
-			if client_lock.name() == *name {
+			if client_arc.read().unwrap().name() == *name {
 				return Some(Arc::downgrade(&client_arc));
 			}
 		}
@@ -85,8 +84,7 @@ impl NetHandler {
 		let mut vec: Vec<(ClientId, String)> = Vec::with_capacity(self.clients.len());
 		for (id, ref client) in &self.clients {
 			let client_arc = client.upgrade().unwrap();
-			let client_lock = client_arc.read().unwrap();
-			vec.push((id.clone(), client_lock.name()));
+			vec.push((id.clone(), client_arc.read().unwrap().name()));
 		}
 		vec
 	}
@@ -96,8 +94,7 @@ impl NetHandler {
 		let mut one_failed = false;
 		for (_, ref client) in &self.clients {
 			let client_arc = client.upgrade().unwrap();
-			let client_lock = client_arc.read().unwrap();
-			one_failed |= !client_lock.write_packet(&p);
+			one_failed |= !client_arc.read().unwrap().write_packet(&p);
 		}
 		one_failed
 	}
