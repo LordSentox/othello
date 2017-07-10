@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex, Weak};
 use std::thread;
 #[macro_use]
 use packets::*;
-use super::Client;
+use super::client::*;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener, TcpStream};
 use std::io::{Error as IOError, Read};
 use std::collections::HashMap;
@@ -86,42 +86,68 @@ impl NetHandler {
 		let clients_map = self.clients.clone();
 
 		thread::spawn(move || { loop {
-			// Read the packet id or detect that the stream has been closed and clean up.
-			let mut pid = vec![0; 1];
-			let len = match stream.read(&mut pid) {
-				Ok(0) => {
-					// The stream has been closed.
-					println!("Connection has been closed by the client.");
-
-					let mut lock = clients_map.lock().unwrap();
-					lock.remove(&cid);
+			// Read the newest packet sent by the client
+			match read_from_stream(&mut stream) {
+				(_, true) => {
+					clients_map.lock().unwrap().remove(&cid);
 					break;
 				},
-				Ok(len) => len,
-				Err(err) => {
-					println!("Error reading packet id: {}", err);
-					continue;
+				(Some(p), false) => {
+					// Packet has been received. It will be handled accordingly.
+					handle_packet(&p, clients_map.clone(), client.clone(), cid);
 				}
-			};
-
-			assert_eq!(len, 1);
-			let pid = pid[0];
-
-			let packet = read_packet!(pid, stream);
+			}
 		}});
 	}
 }
 
-pub trait NetClientMap {
-	fn broadcast<P>(&mut self, p: &P) -> bool where P: Packet;
+pub trait ClientMap {
+	pub fn get_by_name(&self, name: &String) -> Option<&Client>;
 }
 
-impl NetClientMap for ClientMap {
-	fn broadcast<P>(&mut self, p: &P) -> bool where P: Packet {
-		let mut one_failed = false;
-		for (ref id, ref mut client) in self.iter_mut() {
-			one_failed |= !client.lock().unwrap().send(p)
+impl ClientMap {
+	/// Performs a linear search to find the first client with this name.
+	pub fn get_by_name(&self, name: &String) -> Option<&Client> {
+		for (_, client) in self {
+			let lock = client.lock().unwrap();
+			if lock.name() == name {
+				return Some(&lock);
+			}
 		}
-		one_failed
+
+		None
+	}
+
+	pub fn broadcast(&self) {
+		broadcast(&Packet::ClientList(self.to_name_vec()), &self);
+	}
+
+	pub fn to_name_vec(&self) -> Vec<(u64, String)> {
+		let mut vec = Vec::new();
+		for (ref id, ref client) in self {
+			vec.push((id, client.lock().unwrap().name()));
+		}
+
+		vec
+	}
+}
+
+/// Broadcast the message to all clients in the map given.
+/// Returns true, if the message has been sent to all clients successfully, false otherwise.
+pub fn broadcast(p: &Packet, clients: &ClientMap) -> bool {
+	let mut one_failed = false;
+	for client in clients {
+		one_failed |= !write_to_stream(&p, client.stream_mut());
+	}
+	one_failed
+}
+
+/// All incoming packets go through here. They are then potentially distributed to other places.
+fn handle_packet(p: &Packet, client_map: Arc<Mutex<ClientMap>>, client: Arc<Mutex<Client>>, cid: ClientId) {
+	match p {
+		Packet::ChangeNameRequest(new_name) => change_client_name(client, new_name, client_map.lock().unwrap()),
+		Packet::RequestClientList => write_to_stream(&Packet::ClientList(client_map.lock().unwrap().to_name_vec()), client.lock().unwrap().stream_mut()),
+		Packet::ClientList(_) => println!("Packet [ClientList] is only valid in direction Server->Client"),
+		Packet::RequestGame(requestee) => handle_game_request(client.lock().unwrap(), requestee, client_map)
 	}
 }
