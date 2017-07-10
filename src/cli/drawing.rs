@@ -2,7 +2,7 @@ use sfml::graphics::{CircleShape, Color, Drawable, RectangleShape, RenderTarget,
 use sfml::system::Vector2f;
 
 use board::{Piece, Board};
-use score::ScoreBar;
+use score::Score;
 
 impl Drawable for Board {
 	fn draw<'se, 'tex, 'sh, 'shte>(&'se self, target: &mut RenderTarget, _: RenderStates<'tex, 'sh, 'shte>)
@@ -43,7 +43,7 @@ impl Drawable for Board {
 
 const LENGTH: f32 = 512.;
 const HEIGHT: f32 = 20.;
-impl Drawable for ScoreBar {
+impl Drawable for Score {
 	fn draw<'se, 'tex, 'sh, 'shte>(&'se self, target: &mut RenderTarget, _: RenderStates<'tex, 'sh, 'shte>)
 	where 'se: 'sh {
 		let (white, black) = self.get_score();

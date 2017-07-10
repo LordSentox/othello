@@ -6,6 +6,9 @@ use std::marker::Sized;
 use std::net::TcpStream;
 use std::io::{Read, Write};
 
+pub type ClientId = u64;
+pub use std::u64::MAX as ClientIdMAX;
+
 pub const MAX_PACKET_SIZE: u64 = 1024;
 
 #[derive(Serialize, Deserialize, PartialEq)]
@@ -15,7 +18,7 @@ pub enum Packet {
 	/// Request the updated client list manually (Client->Server only)
 	RequestClientList,
 	/// The complete list of all client ids and names in "Vec<(u64, String)>" (Server->Client only)
-	ClientList(Vec<(u64, String)>),
+	ClientList(Vec<(ClientId, String)>),
 	/// Request a game. On the server, "String" is the name of the requestee, on the client the name
 	/// of the one who has requested.
 	RequestGame(String)

@@ -42,7 +42,7 @@ impl Remote {
 
 	/// Write the packet to the stream. Returns true if successful,
 	/// false if an error occured.
-	pub fn write_packet(&self, p: Packet) -> bool {
+	pub fn write_packet(&self, p: &Packet) -> bool {
 		let mut write_lock = self.write.lock().unwrap();
 
 		p.write_to_stream(&mut write_lock)

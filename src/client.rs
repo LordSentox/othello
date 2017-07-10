@@ -13,7 +13,7 @@ pub mod score;
 pub mod packets;
 
 use board::{Board, Piece};
-use score::{ScoreBar};
+use score::{Score};
 use packets::*;
 
 use sfml::window::{ContextSettings, VideoMode, Event, style};
@@ -38,10 +38,6 @@ fn main() {
 	println!("Connecting to server.. IP: {}", server_ip);
 	let mut stream = TcpStream::connect(server_ip).expect("Failed to connect to server!");
 
-	// Test renaming the player.
-	let test_packet = PChangeNameRequest{name: "Arne".to_string()};
-	assert!(test_packet.write_to_stream(&mut stream));
-
 	// Create the window of the application
 	let mut window = RenderWindow::new(VideoMode::new(512, 532, 32), "SFML Othello", style::CLOSE, &ContextSettings::default()).unwrap();
 
@@ -50,7 +46,7 @@ fn main() {
 	board.print();
 
 	// Create the Score Bar
-	let mut score_bar = ScoreBar::new(&board);
+	let mut score = Score::new(&board);
 
 	// The player to set the first stone is black.
 	let mut next_piece = Piece::BLACK;
@@ -63,7 +59,7 @@ fn main() {
 			else if let Event::MouseButtonPressed {button, x, y} = event {
 				if button == Button::Left {
 					if board.place(((x/64) as u8, (y/64) as u8), next_piece) {
-						score_bar.update_score(&board);
+						score.update_score(&board);
 						next_piece = next_piece.opposite();
 					}
 				}
@@ -79,7 +75,7 @@ fn main() {
 
 		window.clear(&Color::rgb(100, 200, 100));
 		window.draw(&board);
-		window.draw(&score_bar);
+		window.draw(&score);
 		window.display();
 	}
 }

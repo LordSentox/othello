@@ -7,9 +7,6 @@ use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener, TcpStream};
 use std::io::{Error as IOError, Read};
 use std::collections::HashMap;
 
-pub type ClientId = usize;
-use std::usize::MAX as ClientIdMAX;
-
 pub struct NetHandler {
 	clients: HashMap<ClientId, Weak<RwLock<Client>>>
 }
@@ -38,6 +35,8 @@ impl NetHandler {
 	/// thread of the program where all others except for the control thread diverge from.
 	fn start_listening(nethandler: Arc<RwLock<NetHandler>>, listener: TcpListener) {
 		thread::spawn(move || {
+			let mut last_id = 0;
+
 			for stream in listener.incoming() {
 				// Check if the stream is valid and try to create a client for it.
 				let stream = match stream {
@@ -48,9 +47,79 @@ impl NetHandler {
 					}
 				};
 
+				let mut nethandler_lock = nethandler.write().unwrap();
+				last_id =  match nethandler_lock.search_free_id(Some(last_id + 1)) {
+					Some(id) => id,
+					None => { println!("Could not find a free id. Denying client."); continue; }
+				};
 
+				let client = Arc::new(RwLock::new(Client::new(last_id, stream, nethandler.clone())));
+
+				// Add the client to the NetHandler, then start the client stream
+				// in a seperate thread.
+				nethandler_lock.register_client(last_id, Arc::downgrade(&client));
+
+				Client::start_receiving(client);
 			}
 		});
+	}
+
+	/// Returns the first client with the name provided, or None, if none could
+	/// be found. This is a linear search, so use sparingly, if the NetHandler
+	/// handles many clients or consider creating another cross-reference.
+	pub fn get_by_name(&self, name: &String) -> Option<Weak<RwLock<Client>>> {
+		for (_, ref client) in &self.clients {
+			let client_arc = client.upgrade().unwrap();
+			let client_lock = client_arc.read().unwrap();
+			if client_lock.name() == *name {
+				return Some(Arc::downgrade(&client_arc));
+			}
+		}
+
+		None
+	}
+
+	/// Returns a Packet::ClientList, containing all client currently registered
+	/// on this NetHandler.
+	pub fn client_list(&self) -> Vec<(ClientId, String)> {
+		let mut vec: Vec<(ClientId, String)> = Vec::with_capacity(self.clients.len());
+		for (id, ref client) in &self.clients {
+			let client_arc = client.upgrade().unwrap();
+			let client_lock = client_arc.read().unwrap();
+			vec.push((id.clone(), client_lock.name()));
+		}
+		vec
+	}
+
+	/// Send the packet provided to all clients registered on this NetHandler.
+	pub fn broadcast(&self, p: &Packet) -> bool {
+		let mut one_failed = false;
+		for (_, ref client) in &self.clients {
+			let client_arc = client.upgrade().unwrap();
+			let client_lock = client_arc.read().unwrap();
+			one_failed |= !client_lock.write_packet(&p);
+		}
+		one_failed
+	}
+
+	/// Register a new client on this NetHandler. Note that the NetHandler does
+	/// not increase the reference count, so the client can be removed freely.
+	/// The NetHandler should be notified however, so that the client can be
+	/// removed gracefully and doesn't cause any problems.
+	pub fn register_client(&mut self, id: ClientId, client: Weak<RwLock<Client>>) {
+		assert_eq!(self.clients.contains_key(&id), false);
+
+		self.clients.insert(id, client);
+	}
+
+	/// Remove the client from the registry of the NetHandler. This is not
+	/// strictly necessary, but recommended, since not doing this might result
+	/// in multiple problems.
+	/// This function must be called, after the client has actually been removed.
+	pub fn unregister_client(&mut self, id: ClientId) {
+		// Check that the client really doesn't exist anymore.
+
+		self.clients.remove(&id);
 	}
 
 	/// Look for any id that has not been given to a client. Optionally,
@@ -77,110 +146,5 @@ impl NetHandler {
 		}
 
 		None
-	}
-}
-
-impl NetHandler {
-	pub fn listen(&mut self) -> ! {
-		// A point to start looking for ids that have not been taken yet.
-		let mut start_id = 0;
-
-		loop {
-			for stream in self.listener.incoming() {
-				match stream {
-					Ok(stream) => {
-						// Assign an unused id to the new client.
-						let new_client = {
-							let mut clients_lock = self.clients.lock().unwrap();
-							start_id = match search_free_id(start_id + 1, &clients_lock) {
-								Some(id) => id,
-								None => { println!("Could not find a free id. Denying client."); continue; }
-							};
-							let new_client = Arc::new(Mutex::new(Client::new(start_id,
-												stream.try_clone().expect("Could not clone stream, which is critical."),
-												Arc::downgrade(&self.clients))));
-							clients_lock.insert(start_id, new_client.clone());
-							new_client // Extend the lifetime of the new client
-						};
-
-						// This is an asynchronous call. It reads all the packets for the given
-						// client id. Every client has it's own read thread this way.
-						self.handle_incoming_packets(start_id, new_client);
-					},
-					Err(err) => println!("Client failed to establish connection: {}", err)
-				}
-			}
-		}
-	}
-
-	fn handle_incoming_packets(&self, cid: ClientId, client: Arc<Mutex<Client>>) {
-		let mut stream = client.lock().unwrap().stream().try_clone().expect("Failed to clone stream, which is critical.");
-		let clients_map = self.clients.clone();
-
-		thread::spawn(move || { loop {
-			// Read the newest packet sent by the client
-			match read_from_stream(&mut stream) {
-				(_, true) => {
-					clients_map.lock().unwrap().remove(&cid);
-					break;
-				},
-				(Some(p), false) => {
-					// Packet has been received. It will be handled accordingly.
-					handle_packet(&p, clients_map.clone(), client.clone(), cid);
-				}
-			}
-		}});
-	}
-}
-
-/*
-pub trait ClientMap {
-	pub fn get_by_name(&self, name: &String) -> Option<&Client>;
-}
-
-impl ClientMap {
-	/// Performs a linear search to find the first client with this name.
-	pub fn get_by_name(&self, name: &String) -> Option<&Client> {
-		for (_, client) in self {
-			let lock = client.lock().unwrap();
-			if lock.name() == name {
-				return Some(&lock);
-			}
-		}
-
-		None
-	}
-
-	pub fn broadcast(&self) {
-		broadcast(&Packet::ClientList(self.to_name_vec()), &self);
-	}
-
-	pub fn to_name_vec(&self) -> Vec<(u64, String)> {
-		let mut vec = Vec::new();
-		for (ref id, ref client) in self {
-			vec.push((id, client.lock().unwrap().name()));
-		}
-
-		vec
-	}
-}*/
-
-/// Broadcast the message to all clients in the map given.
-/// Returns true, if the message has been sent to all clients successfully, false otherwise.
-pub fn broadcast(p: &Packet, clients: &ClientMap) -> bool {
-	let mut one_failed = false;
-	for client in clients {
-		one_failed |= !write_to_stream(&p, client.stream_mut());
-	}
-	one_failed
-}
-
-/// All incoming packets go through here. They are then potentially distributed to other places.
-fn handle_packet(p: &Packet, client_map: Arc<Mutex<ClientMap>>, client: Arc<Mutex<Client>>, cid: ClientId) {
-	match p {
-		Packet::ChangeNameRequest(new_name) => change_client_name(client, new_name, client_map.lock().unwrap()),
-		Packet::RequestClientList => write_to_stream(&Packet::ClientList(client_map.lock().unwrap().to_name_vec()), client.lock().unwrap().stream_mut()),
-		Packet::ClientList(_) => println!("Packet [ClientList] is only valid in direction Server->Client"),
-		Packet::RequestGame(requestee) => handle_game_request(client.lock().unwrap(), requestee, client_map)
 	}
 }
