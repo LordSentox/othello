@@ -1,14 +1,14 @@
 use board::{Board, Piece};
 
 /// Bar to keep track of the current score between the two teams.
-pub struct ScoreBar {
+pub struct Score {
 	white: u8,
 	black: u8
 }
 
-impl ScoreBar {
-	pub fn new(board: &Board) -> ScoreBar {
-		let mut bar = ScoreBar {
+impl Score {
+	pub fn new(board: &Board) -> Score {
+		let mut bar = Score {
 			white: 0,
 			black: 0
 		};
