@@ -1,26 +1,27 @@
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::{Arc, Mutex, RwLock, Weak};
 use std::net::TcpStream;
-use super::{ClientId, ClientMap};
+use super::{ClientId, NetHandler, Remote};
 use packets::Packet;
 
 // NOTE: The Client list could alse be implemented as a DoubleLinkedList.
 pub struct Client {
 	id: ClientId,
 	name: String,
-	stream: TcpStream,
-	clients: Weak<Mutex<ClientMap>>,
-	pending_request: Option<String>
+	remote: Remote,
+	pending_request: Option<String>,
+	nethandler: Arc<RwLock<NetHandler>>
 }
 
 impl Client {
-	pub fn new(id: usize, stream: TcpStream, clients: Weak<Mutex<ClientMap>>) -> Client {
+	pub fn new(id: usize, stream: TcpStream, handler: Arc<RwLock<NetHandler>>) -> Client {
 		println!("New client. ID: [{}], IP: [{}]", id, stream.peer_addr().unwrap());
 
 		Client {
 			id: id,
 			name: String::new(),
-			stream: stream,
-			clients: clients
+			remote: Remote::new(stream).expect("Could not establish connection"),
+			pending_request: None,
+			nethandler: handler
 		}
 	}
 
@@ -30,14 +31,6 @@ impl Client {
 
 	pub fn set_name(&mut self, name: String) {
 		self.name = name
-	}
-
-	pub fn stream(&self) -> &TcpStream {
-		&self.stream
-	}
-
-	pub fn stream_mut(&mut self) -> &mut TcpStream {
-		&mut self.stream
 	}
 }
 

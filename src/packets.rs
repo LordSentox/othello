@@ -21,45 +21,53 @@ pub enum Packet {
 	RequestGame(String)
 }
 
-pub fn write_to_stream(p: &Packet, stream: &mut TcpStream) -> bool {
-	let size = Bounded(MAX_PACKET_SIZE);
+impl Packet {
+	pub fn write_to_stream(&self, stream: &mut TcpStream) -> bool {
+		let size = Bounded(MAX_PACKET_SIZE);
 
-	let data: Vec<u8> = match serialize(&p, size) {
-		Ok(data) => data,
-		Err(err) => { println!("Error serialising packet: {}", err); return false; }
-	};
+		let data: Vec<u8> = match serialize(&self, size) {
+			Ok(data) => data,
+			Err(err) => { println!("Error serialising packet: {}", err); return false; }
+		};
 
-	match stream.write(&data) {
-		Ok(len) => {
-			assert!(len <= MAX_PACKET_SIZE as usize);
-			true
-		},
-		Err(err) => {
-			println!("Failed writing packet to stream: {}", err);
-			false
+		match stream.write(&data) {
+			Ok(len) => {
+				assert!(len <= MAX_PACKET_SIZE as usize);
+				true
+			},
+			Err(err) => {
+				println!("Failed writing packet to stream: {}", err);
+				false
+			}
 		}
 	}
-}
 
-// TODO: Later, the buffer could be borrowed, which would increase performance.
-// This has to be crosschecked with the inner workings of bytecode, however.
-/// Read a packet from the stream. This returns a packet, in case one could be read
-/// in conjunction with a bool stating false, in case the stream has been closed.
-pub fn read_from_stream(stream: &mut TcpStream) -> (Option<Packet>, bool) {
-	let mut data: Vec<u8> = vec![0; MAX_PACKET_SIZE as usize];
+	// TODO: Later, the buffer could be borrowed, which would increase performance.
+	// This has to be crosschecked with the inner workings of bytecode, however.
+	/// Read a packet from the stream. This returns a packet, in case one could be read
+	/// in conjunction with a bool stating false, in case the stream has been closed.
+	pub fn read_from_stream(stream: &mut TcpStream) -> (Option<Packet>, bool) {
+		let mut data: Vec<u8> = vec![0; MAX_PACKET_SIZE as usize];
 
-	match stream.read(&mut data) {
-		Ok(len) => {
-			if len == 0 {
-				(None, false)
+		match stream.read(&mut data) {
+			Ok(len) => {
+				if len == 0 {
+					(None, false)
+				}
+				else {
+					match deserialize(&data) {
+						Ok(p) => (Some(p), true),
+						Err(err) => {
+							println!("Error decoding packet. {}", err);
+							(None, true)
+						}
+					}
+				}
 			}
-			else {
-				(Some(deserialize(&data).unwrap()), true)
+			Err (err) => {
+				println!("Error receiving packet: {}", err);
+				(None, true)
 			}
-		}
-		Err (err) => {
-			println!("Error receiving packet: {}", err);
-			(None, true)
 		}
 	}
 }

@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::{Arc, RwLock, Weak};
 use std::thread;
 #[macro_use]
 use packets::*;
@@ -10,45 +10,77 @@ use std::collections::HashMap;
 pub type ClientId = usize;
 use std::usize::MAX as ClientIdMAX;
 
-pub type ClientMap = HashMap<ClientId, Arc<Mutex<Client>>>;
-
 pub struct NetHandler {
-	listener: TcpListener,
-	clients: Arc<Mutex<ClientMap>>
-}
-
-fn search_free_id<T>(start: ClientId, map: &HashMap<ClientId, T>) -> Option<ClientId> {
-	// Search high, since this is more probable.
-	for key in start..ClientIdMAX {
-		if !map.contains_key(&key) {
-			return Some(key);
-		}
-	}
-
-	// Search low, since some old keys might be free again.
-	for key in 0..start - 1 {
-		if !map.contains_key(&key) {
-			return Some(key);
-		}
-	}
-
-	None
+	clients: HashMap<ClientId, Weak<RwLock<Client>>>
 }
 
 impl NetHandler {
-	pub fn new(port: u16) -> Result<NetHandler, IOError> {
+	/// Create a new NetHandler and start listening on the specified port.
+	/// If 0 is specified as the port, the OS will be asked to assign one.
+	pub fn new(port: u16) -> Result<Arc<RwLock<NetHandler>>, IOError> {
+		// Create a new listener on the local address with the specified port.
 		let listener = match TcpListener::bind(SocketAddr::V4(SocketAddrV4::new(
-								Ipv4Addr::new(127, 0, 0, 1), port))) {
-			Ok(listener) => listener,
-			Err(err) => return Err(err)
+			Ipv4Addr::new(127, 0, 0, 1), port))) {
+				Ok(listener) => listener,
+				Err(err) => return Err(err)
 		};
 
-		Ok(NetHandler {
-			listener: listener,
-			clients: Arc::new(Mutex::new(ClientMap::new()))
-		})
+		let nethandler = Arc::new(RwLock::new(NetHandler {
+			clients: HashMap::new()
+		}));
+
+		NetHandler::start_listening(nethandler.clone(), listener);
+		Ok(nethandler)
 	}
 
+	/// Starts a new thread that will listen to new incoming clients. They will then be added to
+	/// the NetHandler and their client thread will be started. In other words, this is the main
+	/// thread of the program where all others except for the control thread diverge from.
+	fn start_listening(nethandler: Arc<RwLock<NetHandler>>, listener: TcpListener) {
+		thread::spawn(move || {
+			for stream in listener.incoming() {
+				// Check if the stream is valid and try to create a client for it.
+				let stream = match stream {
+					Ok(stream) => stream,
+					Err(err) => {
+						println!("Client tried to connect, but could not be accepted.");
+						continue;
+					}
+				};
+
+
+			}
+		});
+	}
+
+	/// Look for any id that has not been given to a client. Optionally,
+	/// a starting id can be provided, where it is expected there is room
+	/// close after it. If None is given, it starts with 0.
+	pub fn search_free_id(&self, start: Option<ClientId>) -> Option<ClientId> {
+		let start = match start {
+			Some(start) => start,
+			None => 0
+		};
+
+		// Search high, since this is more probable.
+		for key in start..ClientIdMAX {
+			if !self.clients.contains_key(&key) {
+				return Some(key);
+			}
+		}
+
+		// Search low, since some old keys might be free again.
+		for key in 0..start - 1 {
+			if !self.clients.contains_key(&key) {
+				return Some(key);
+			}
+		}
+
+		None
+	}
+}
+
+impl NetHandler {
 	pub fn listen(&mut self) -> ! {
 		// A point to start looking for ids that have not been taken yet.
 		let mut start_id = 0;
@@ -101,6 +133,7 @@ impl NetHandler {
 	}
 }
 
+/*
 pub trait ClientMap {
 	pub fn get_by_name(&self, name: &String) -> Option<&Client>;
 }
@@ -130,7 +163,7 @@ impl ClientMap {
 
 		vec
 	}
-}
+}*/
 
 /// Broadcast the message to all clients in the map given.
 /// Returns true, if the message has been sent to all clients successfully, false otherwise.
