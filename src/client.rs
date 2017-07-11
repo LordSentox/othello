@@ -38,8 +38,22 @@ fn main() {
 	println!("Connecting to server.. IP: {}", server_ip);
 	let mut stream = TcpStream::connect(server_ip).expect("Failed to connect to server!");
 
+	// Send a test packet.
+	let p = Packet::RequestClientList;
+	assert!(p.write_to_stream(&mut stream));
+	// Listen to the response from the server.
+	loop {
+		match Packet::read_from_stream(&mut stream) {
+			(Some(p), true) => { println!("Received response to test: {:?}", p); break; },
+			(None, true) => println!("Error receiving packet."),
+			(_, false) => panic!("Connection has been closed by the server.")
+		}
+
+	}
+
 	// Create the window of the application
 	let mut window = RenderWindow::new(VideoMode::new(512, 532, 32), "SFML Othello", style::CLOSE, &ContextSettings::default()).unwrap();
+	window.set_framerate_limit(30);
 
 	// Create a test board and print its contents.
 	let mut board = Board::new();

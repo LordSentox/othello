@@ -17,7 +17,8 @@ impl Piece {
 
 pub struct Board {
 	// Contains the info about the 8x8 board.
-	squares: Vec<Vec<Option<Piece>>>
+	squares: Vec<Vec<Option<Piece>>>,
+	turn: Piece
 }
 
 impl Board {
@@ -31,7 +32,8 @@ impl Board {
 		squares[4][3] = Some(Piece::BLACK);
 
 		Board {
-			squares: squares
+			squares: squares,
+			turn: Piece::BLACK
 		}
 	}
 

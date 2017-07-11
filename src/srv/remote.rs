@@ -13,6 +13,8 @@ pub struct Remote {
 }
 
 impl Remote {
+	/// Wrap a TcpStream into a remote object.
+	/// This fails if the stream is not cloneable.
 	pub fn new(stream: TcpStream) -> Result<Remote, io::Error> {
 		// Try to clone the stream, because Rust would not allow us to have
 		// two mutable streams otherwise, which is perfectly safe when one

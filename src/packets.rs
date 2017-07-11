@@ -11,7 +11,7 @@ pub use std::u64::MAX as ClientIdMAX;
 
 pub const MAX_PACKET_SIZE: u64 = 1024;
 
-#[derive(Serialize, Deserialize, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum Packet {
 	/// Request to change the name of the sender internally to "String" (Client->Server only)
 	ChangeNameRequest(String),

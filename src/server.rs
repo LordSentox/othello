@@ -14,6 +14,7 @@ pub mod srv;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener};
 use std::sync::{Arc, Mutex};
 use std::thread;
+use srv::NetHandler;
 
 fn main() {
 	let args: Vec<String> = std::env::args().collect();
@@ -23,12 +24,7 @@ fn main() {
 
 	let port: u16 = args[1].parse().expect("Input formatted incorrectly. Could not read port.");
 
-	let listener = TcpListener::bind(SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), port))).expect("Could not start listening. Shutting down.");
-	for stream in listener.incoming() {
-		match stream {
-			Ok(stream) => {
-			}
-			Err(err) => println!("Client tried to connect, but an error occured. {}", err)
-		}
-	}
+	let nethandler = NetHandler::new(port).unwrap();
+
+	loop {}
 }
