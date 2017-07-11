@@ -36,7 +36,7 @@ impl Remote {
 	/// is closed or the packet has been read (With or without error)
 	/// Returns the packet if available and false, in case the stream has been
 	/// closed.
-	pub fn read_packet(&self) -> (Option<Packet>, bool) {
+	pub fn read_packet(&self) -> Result<Packet, PacketReadError> {
 		let mut read_lock = self.read.lock().unwrap();
 
 		Packet::read_from_stream(&mut read_lock)
@@ -55,7 +55,7 @@ impl Remote {
 	pub fn shutdown(&mut self) {
 		// Reading and sending will be seperately shut down, as to not
 		// disturb any operation that might still be in the process.
-		self.read.lock().unwrap().shutdown(Shutdown::Read);
-		self.write.lock().unwrap().shutdown(Shutdown::Write);
+		self.read.lock().unwrap().shutdown(Shutdown::Read).expect("Error while shutting down read thread.");
+		self.write.lock().unwrap().shutdown(Shutdown::Write).expect("Error while shutting down write thread.");
 	}
 }

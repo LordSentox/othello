@@ -44,9 +44,9 @@ fn main() {
 	// Listen to the response from the server.
 	loop {
 		match Packet::read_from_stream(&mut stream) {
-			(Some(p), true) => { println!("Received response to test: {:?}", p); break; },
-			(None, true) => println!("Error receiving packet."),
-			(_, false) => panic!("Connection has been closed by the server.")
+			Ok(p) => { println!("Received response to test: {:?}", p); break; },
+			Err(PacketReadError::Closed) => panic!("Connection has been closed by the server."),
+			Err(err) => println!("Error receiving packet. {:?}", err)
 		}
 
 	}

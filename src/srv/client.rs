@@ -35,16 +35,17 @@ impl Client {
 		thread::spawn(move || {
 			loop {
 				match client.read().unwrap().remote.read_packet() {
-					(Some(p), false) => Client::handle_packet(client.clone(), p),
-					(None, false) => {}, // Simply failed to read a packet.
-					(_, true) => {
+					Ok(p) => Client::handle_packet(client.clone(), p),
+					Err(PacketReadError::Closed) => {
 						// The connection has been closed. Remove the client from
 						// the NetHandler and end the receiving stream.
 						let client_lock = client.read().unwrap();
 						let mut nethandler_lock = client_lock.nethandler.write().unwrap();
+						println!("Client [{}] disconnected.", client_lock.id);
 						nethandler_lock.unregister_client(client_lock.id);
 						break;
 					}
+					Err(err) => println!("Error reading packet {:?}", err)
 				};
 			}
 		});
@@ -61,6 +62,10 @@ impl Client {
 		// Since the client is only locked in read mode, iterating through the
 		// client list in read mode as well is okay.
 		let p = Packet::ClientList(self.nethandler.read().unwrap().client_list());
+
+		if !self.remote.write_packet(&p) {
+			println!("Failed to send client [{}] the client list.", self.id);
+		}
 	}
 
 	/// Request a game from the client with the provided name.

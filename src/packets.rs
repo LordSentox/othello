@@ -1,15 +1,26 @@
-use bincode::{serialize, deserialize, Bounded};
+use bincode::{serialize, deserialize, Bounded, Error};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use std::marker::Sized;
 use std::net::TcpStream;
 use std::io::{Read, Write};
+use std::io;
 
 pub type ClientId = u64;
 pub use std::u64::MAX as ClientIdMAX;
 
 pub const MAX_PACKET_SIZE: u64 = 1024;
+
+#[derive(Debug)]
+pub enum PacketReadError {
+	/// The packet could not be properly deserialised.
+	DeserializeError(Error),
+	/// The packet could not be read properly from the stream.
+	IOError(io::Error),
+	/// The connection has been closed by the peer socket.
+	Closed
+}
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum Packet {
@@ -49,28 +60,26 @@ impl Packet {
 	// This has to be crosschecked with the inner workings of bytecode, however.
 	/// Read a packet from the stream. This returns a packet, in case one could be read
 	/// in conjunction with a bool stating false, in case the stream has been closed.
-	pub fn read_from_stream(stream: &mut TcpStream) -> (Option<Packet>, bool) {
+	pub fn read_from_stream(stream: &mut TcpStream) -> Result<Packet, PacketReadError> {
 		let mut data: Vec<u8> = vec![0; MAX_PACKET_SIZE as usize];
 
 		match stream.read(&mut data) {
 			Ok(len) => {
 				if len == 0 {
-					(None, false)
+					Err(PacketReadError::Closed)
 				}
 				else {
 					match deserialize(&data) {
-						Ok(p) => (Some(p), true),
+						Ok(p) => Ok(p),
 						Err(err) => {
-							println!("Error decoding packet. {}", err);
-							(None, true)
+							// XXX: There might be some cleanup to do, which still
+							// needs to be tested.
+							Err(PacketReadError::DeserializeError(err))
 						}
 					}
 				}
 			}
-			Err (err) => {
-				println!("Error receiving packet: {}", err);
-				(None, true)
-			}
+			Err (err) => Err(PacketReadError::IOError(err))
 		}
 	}
 }
