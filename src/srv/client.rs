@@ -1,7 +1,8 @@
 use std::sync::{Arc, RwLock};
 use std::thread;
 use std::net::TcpStream;
-use super::{NetHandler, Remote};
+use super::NetHandler;
+use remote::Remote;
 use packets::*;
 
 pub struct Client {

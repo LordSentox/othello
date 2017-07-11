@@ -6,6 +6,7 @@ extern crate toml;
 
 #[macro_use]
 pub mod packets;
+pub mod remote;
 pub mod srv;
 
 use srv::NetHandler;

@@ -7,8 +7,9 @@ extern crate toml;
 
 pub mod board;
 pub mod cli;
-pub mod score;
 pub mod packets;
+pub mod remote;
+pub mod score;
 
 use board::{Board, Piece};
 use score::{Score};
@@ -19,6 +20,8 @@ use sfml::window::mouse::Button;
 use sfml::graphics::{Color, RenderTarget, RenderWindow};
 
 use std::net::TcpStream;
+
+use cli::*;
 
 fn main() {
 	// Connect to a server
@@ -32,29 +35,10 @@ fn main() {
 		panic!("Could not start client. Please provide a name to identify yourself on the server.");
 	}
 
-	let server_ip = args[1].clone();
+	// Create the connection to the server. Later, this could be read from a
+	// config file, with a little more galant error checking as well.
+	let server = Server::new(args[1], &args[2]).unwrap();
 
-	println!("Connecting to server.. IP: {}", server_ip);
-	let mut stream = TcpStream::connect(server_ip).expect("Failed to connect to server!");
-
-	// Set the client name.
-	println!("Setting name to [{}]", &args[2]);
-	let p = Packet::ChangeNameRequest(args[2].clone());
-	p.write_to_stream(&mut stream);
-
-	loop {
-		match Packet::read_from_stream(&mut stream) {
-			Ok(Packet::ChangeNameResponse(true)) => { println!("Name has been set on the server."); break; },
-			Ok(Packet::ChangeNameResponse(false)) => panic!("Name request has been denied by the server."),
-			Ok(p) => println!("Received unexpected packet from server: {:?} .. ignoring", p),
-			Err(err) => panic!("Error occured while sending name to server: {:?}", err)
-		}
-	}
-
-	// Send a test packet.
-	let p = Packet::RequestClientList;
-	assert!(p.write_to_stream(&mut stream));
-	println!("Requested client list.");
 	// Listen to the response from the server.
 	match Packet::read_from_stream(&mut stream) {
 		Ok(p) => println!("Received response to test: {:?}", p),
