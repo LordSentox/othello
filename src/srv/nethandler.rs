@@ -78,6 +78,12 @@ impl NetHandler {
 		None
 	}
 
+	/// Check if a name has already been registered. This is a linear search.
+	pub fn is_name_registered(&self, name: &String) -> bool {
+		let client = self.get_by_name(&name);
+		client.is_some()
+	}
+
 	/// Returns a Packet::ClientList, containing all client currently registered
 	/// on this NetHandler.
 	pub fn client_list(&self) -> Vec<(ClientId, String)> {

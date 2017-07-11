@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex, RwLock, Weak};
+use std::sync::{Arc, RwLock, Weak};
 use std::thread;
 use std::net::TcpStream;
 use super::{NetHandler, Remote};
@@ -34,7 +34,14 @@ impl Client {
 	pub fn start_receiving(client: Arc<RwLock<Client>>) {
 		thread::spawn(move || {
 			loop {
-				match client.read().unwrap().remote.read_packet() {
+				// Read the newest packet. Make sure not to lock the client the
+				// entire time after the packet has been read.
+				let packet = {
+					let client_lock = client.read().unwrap();
+					client_lock.remote.read_packet()
+				};
+
+				match packet {
 					Ok(p) => Client::handle_packet(client.clone(), p),
 					Err(PacketReadError::Closed) => {
 						// The connection has been closed. Remove the client from
@@ -54,6 +61,26 @@ impl Client {
 	/// Send a packet to the remote host represented by this client.
 	pub fn write_packet(&self, p: &Packet) -> bool {
 		self.remote.write_packet(&p)
+	}
+
+	/// Try to change the name of the client. Sends a response to the client
+	/// to tell him, if the change has been successful.
+	// NOTE: Should the implementation of NetHandler change, the client might
+	// need to register the name change with its respective NetHandler.
+	fn change_name(client: Arc<RwLock<Client>>, name: &String) {
+		let successful = {
+			let client_lock = client.read().unwrap();
+			let successful = !client_lock.nethandler.read().unwrap().is_name_registered(&name);
+			successful
+		};
+
+		// Send the response to the client.
+		let p = Packet::ChangeNameResponse(successful);
+		client.read().unwrap().remote.write_packet(&p);
+
+		if successful {
+			client.write().unwrap().name = name.clone();
+		}
 	}
 
 	/// Send a packet containing all clients which are registered on the same
@@ -92,12 +119,14 @@ impl Client {
 	/// Handle a single packet. This is called every time, the remote instance
 	/// has successfully read a packet from the receiving thread automatically.
 	fn handle_packet(client: Arc<RwLock<Client>>, p: Packet) {
+		println!("Handling packet {:?}", p);
+
 		match p {
-			Packet::ChangeNameRequest(new_name) => client.write().unwrap().name = new_name,
+			Packet::ChangeNameRequest(new_name) => Client::change_name(client.clone(), &new_name),
+			Packet::ChangeNameResponse(_) => println!("Packet [ChangeNameResponse] is only valid in direction Server->Client."),
 			Packet::RequestClientList => client.read().unwrap().send_clients_to_peer(),
 			Packet::ClientList(_) => println!("Packet [ClientList] is only valid in direction Server->Client."),
-			Packet::RequestGame(requestee_name) => client.write().unwrap().request_game(&requestee_name),
-			_ => unreachable!() // Packet not implemented.
+			Packet::RequestGame(requestee_name) => client.write().unwrap().request_game(&requestee_name)
 		}
 	}
 
@@ -109,12 +138,5 @@ impl Client {
 	/// The name of the client.
 	pub fn name(&self) -> String {
 		self.name.clone()
-	}
-
-	/// Set the name of the client. This affects all future calls.
-	// NOTE: Should the implementation of NetHandler change, the client might
-	// need to register the name change with its respective NetHandler.
-	pub fn set_name(&mut self, name: String) {
-		self.name = name;
 	}
 }

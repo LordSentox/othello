@@ -10,7 +10,7 @@ use std::io;
 pub type ClientId = u64;
 pub use std::u64::MAX as ClientIdMAX;
 
-pub const MAX_PACKET_SIZE: u64 = 1024;
+pub const MAX_PACKET_SIZE: u64 = 512;
 
 #[derive(Debug)]
 pub enum PacketReadError {
@@ -26,6 +26,8 @@ pub enum PacketReadError {
 pub enum Packet {
 	/// Request to change the name of the sender internally to "String" (Client->Server only)
 	ChangeNameRequest(String),
+	/// Answer to a name-change. True, if the clients new name was accepted by the server (Server->Client only)
+	ChangeNameResponse(bool),
 	/// Request the updated client list manually (Client->Server only)
 	RequestClientList,
 	/// The complete list of all client ids and names in "Vec<(u64, String)>" (Server->Client only)
@@ -72,13 +74,13 @@ impl Packet {
 					match deserialize(&data) {
 						Ok(p) => Ok(p),
 						Err(err) => {
-							// XXX: There might be some cleanup to do, which still
-							// needs to be tested.
 							Err(PacketReadError::DeserializeError(err))
 						}
 					}
 				}
 			}
+			// XXX: There might be some cleanup to do in case of the following
+			// error, which still needs to be tested.
 			Err (err) => Err(PacketReadError::IOError(err))
 		}
 	}

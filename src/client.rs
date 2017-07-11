@@ -33,22 +33,38 @@ fn main() {
 		panic!("Could not start client. Please provide the IP of the server you want to connect to.");
 	}
 
+	if args.len() < 3 {
+		panic!("Could not start client. Please provide a name to identify yourself on the server.");
+	}
+
 	let server_ip = args[1].clone();
 
 	println!("Connecting to server.. IP: {}", server_ip);
 	let mut stream = TcpStream::connect(server_ip).expect("Failed to connect to server!");
+	
+	// Set the client name.
+	println!("Setting name to [{}]", &args[2]);
+	let p = Packet::ChangeNameRequest(args[2].clone());
+	p.write_to_stream(&mut stream);
+
+	loop {
+		match Packet::read_from_stream(&mut stream) {
+			Ok(Packet::ChangeNameResponse(true)) => { println!("Name has been set on the server."); break; },
+			Ok(Packet::ChangeNameResponse(false)) => panic!("Name request has been denied by the server."),
+			Ok(p) => println!("Received unexpected packet from server: {:?} .. ignoring", p),
+			Err(err) => panic!("Error occured while sending name to server: {:?}", err)
+		}
+	}
 
 	// Send a test packet.
 	let p = Packet::RequestClientList;
 	assert!(p.write_to_stream(&mut stream));
+	println!("Requested client list.");
 	// Listen to the response from the server.
-	loop {
-		match Packet::read_from_stream(&mut stream) {
-			Ok(p) => { println!("Received response to test: {:?}", p); break; },
-			Err(PacketReadError::Closed) => panic!("Connection has been closed by the server."),
-			Err(err) => println!("Error receiving packet. {:?}", err)
-		}
-
+	match Packet::read_from_stream(&mut stream) {
+		Ok(p) => println!("Received response to test: {:?}", p),
+		Err(PacketReadError::Closed) => panic!("Connection has been closed by the server."),
+		Err(err) => println!("Error receiving packet. {:?}", err)
 	}
 
 	// Create the window of the application
