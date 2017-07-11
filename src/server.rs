@@ -1,5 +1,3 @@
-#![feature(associated_consts)]
-
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -10,10 +8,6 @@ extern crate toml;
 pub mod packets;
 pub mod srv;
 
-
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener};
-use std::sync::{Arc, Mutex};
-use std::thread;
 use srv::NetHandler;
 
 fn main() {
@@ -24,7 +18,7 @@ fn main() {
 
 	let port: u16 = args[1].parse().expect("Input formatted incorrectly. Could not read port.");
 
-	let nethandler = NetHandler::new(port).unwrap();
+	let _ = NetHandler::new(port).unwrap();
 
 	loop {}
 }

@@ -1,10 +1,9 @@
 use std::sync::{Arc, RwLock, Weak};
 use std::thread;
-#[macro_use]
 use packets::*;
 use super::client::*;
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener, TcpStream};
-use std::io::{Error as IOError, Read};
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener};
+use std::io::{Error as IOError};
 use std::collections::HashMap;
 
 pub struct NetHandler {
@@ -42,7 +41,7 @@ impl NetHandler {
 				let stream = match stream {
 					Ok(stream) => stream,
 					Err(err) => {
-						println!("Client tried to connect, but could not be accepted.");
+						println!("Client tried to connect, but could not be accepted. {}", err);
 						continue;
 					}
 				};

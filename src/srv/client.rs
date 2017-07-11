@@ -1,4 +1,4 @@
-use std::sync::{Arc, RwLock, Weak};
+use std::sync::{Arc, RwLock};
 use std::thread;
 use std::net::TcpStream;
 use super::{NetHandler, Remote};

@@ -1,8 +1,5 @@
 use bincode::{serialize, deserialize, Bounded, Error};
-use serde::Serialize;
-use serde::de::DeserializeOwned;
 
-use std::marker::Sized;
 use std::net::TcpStream;
 use std::io::{Read, Write};
 use std::io;

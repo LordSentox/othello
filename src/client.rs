@@ -1,5 +1,3 @@
-#![feature(associated_consts)]
-
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -21,9 +19,6 @@ use sfml::window::mouse::Button;
 use sfml::graphics::{Color, RenderTarget, RenderWindow};
 
 use std::net::TcpStream;
-use std::io::Write;
-
-use std::str::FromStr;
 
 fn main() {
 	// Connect to a server
@@ -41,7 +36,7 @@ fn main() {
 
 	println!("Connecting to server.. IP: {}", server_ip);
 	let mut stream = TcpStream::connect(server_ip).expect("Failed to connect to server!");
-	
+
 	// Set the client name.
 	println!("Setting name to [{}]", &args[2]);
 	let p = Packet::ChangeNameRequest(args[2].clone());
