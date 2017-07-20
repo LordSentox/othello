@@ -2,6 +2,13 @@ use std::net::{Shutdown, TcpStream};
 use std::sync::Mutex;
 use std::io;
 use packets::*;
+use std::time::Duration;
+
+pub enum DirSocket {
+	READ,
+	WRITE,
+	BOTH
+}
 
 /// A safe wrapper around a stream, which allows exactly one thread to read
 /// and one thread to write to the stream at a given time.
@@ -32,8 +39,24 @@ impl Remote {
 		})
 	}
 
-	/// Try to read the next incoming packet. This blocks until either the stream
-	/// is closed or the packet has been read (With or without error)
+	/// Set the timeout of the read-portion or the send-portion of the socket.
+	/// If set to None, the part in question will block indefinately.
+	pub fn set_timeout(&self, timeout: Option<Duration>, dir: DirSocket) -> io::Result<()> {
+		match dir {
+			DirSocket::READ => self.read.lock().unwrap().set_read_timeout(timeout),
+			DirSocket::WRITE => self.write.lock().unwrap().set_write_timeout(timeout),
+			DirSocket::BOTH => {
+				if let Err(err) = self.read.lock().unwrap().set_read_timeout(timeout) {
+					return Err(err);
+				}
+
+				self.write.lock().unwrap().set_write_timeout(timeout)
+			}
+		}
+	}
+
+	/// Try to read the next incoming packet. This blocks until the stream is closed, the packet
+	/// has been read (With or without error) or the timeout is triggered.
 	/// Returns the packet if available and false, in case the stream has been
 	/// closed.
 	pub fn read_packet(&self) -> Result<Packet, PacketReadError> {
