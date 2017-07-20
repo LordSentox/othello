@@ -164,6 +164,18 @@ impl NetHandler {
 	/// Send a request to the player with the string.
 	pub fn request_game(&self, to: String) -> bool {
 		// Look if the client actually exists in the current client table
-		unimplemented!();
+		let mut succ = false;
+		for (_, client) in self.last_cli_list {
+			if client == to {
+				succ = true;
+			}
+		}
+
+		if succ {
+			let p = Packet::RequestGame(to);
+			succ &= self.remote.write_packet(&p);
+		}
+
+		succ
 	}
 }
