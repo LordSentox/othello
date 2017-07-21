@@ -37,14 +37,8 @@ fn main() {
 
 	// Create the connection to the server. Later, this could be read from a
 	// config file, with a little more galant error checking as well.
-	let server = Server::new(args[1], &args[2]).unwrap();
-
-	// Listen to the response from the server.
-	match Packet::read_from_stream(&mut stream) {
-		Ok(p) => println!("Received response to test: {:?}", p),
-		Err(PacketReadError::Closed) => panic!("Connection has been closed by the server."),
-		Err(err) => println!("Error receiving packet. {:?}", err)
-	}
+	let mut nethandler = NetHandler::new(&args[1], &args[2]).unwrap();
+	nethandler.start_receiving();
 
 	// Create the window of the application
 	let mut window = RenderWindow::new(VideoMode::new(512, 532, 32), "SFML Othello", style::CLOSE, &ContextSettings::default()).unwrap();
