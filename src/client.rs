@@ -13,13 +13,10 @@ pub mod score;
 
 use board::{Board, Piece};
 use score::{Score};
-use packets::*;
 
 use sfml::window::{ContextSettings, VideoMode, Event, style};
 use sfml::window::mouse::Button;
 use sfml::graphics::{Color, RenderTarget, RenderWindow};
-
-use std::net::TcpStream;
 
 use cli::*;
 

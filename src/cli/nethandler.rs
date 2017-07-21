@@ -1,4 +1,4 @@
-use std::sync::mpsc::{Receiver, Sender};
+use std::sync::mpsc::Receiver;
 use std::sync::mpsc;
 use std::sync::{Arc, Weak};
 use std::net::{TcpStream, ToSocketAddrs};
@@ -76,7 +76,7 @@ impl NetHandler {
 	/// Start receiving packets for this NetHandler. This is a nonblocking operation. The packets
 	/// which will be received can be handled in any thread the programmer deems right.
 	pub fn start_receiving(&mut self) {
-		self.remote.set_timeout(Some(Duration::from_secs(2)), DirSocket::READ);
+		self.remote.set_timeout(Some(Duration::from_secs(2)), DirSocket::READ).expect("Could not set socket timeout.");
 
 		let remote: Weak<Remote> = Arc::downgrade(&self.remote);
 		let (p_snd, p_rcv) = mpsc::channel::<Packet>();
@@ -146,7 +146,7 @@ impl NetHandler {
 	}
 
 	/// Shut the NetHandler down.
-	pub fn shutdown(mut self) {
+	pub fn shutdown(self) {
 		drop(self.remote);
 
 		if let Some(h) = self.rcv_handle {
