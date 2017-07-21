@@ -103,48 +103,50 @@ impl NetHandler {
 	pub fn handle_packets(&mut self, timeout: Option<Duration>) {
 		if self.p_rcv.is_none() { return; }
 
-		let try_recv_and_handle = || -> bool {
-			let p = match self.p_rcv.unwrap().try_recv() {
-				Ok(p) => p,
-				Err(err) => { println!("Error handling packet. {}", err); return false; }
-			};
-
-			match p {
-				Packet::ChangeNameRequest(_) => println!("Received invalid packet from Server. ChangeNameRequest is only valid in direction Client -> Server."),
-				Packet::ChangeNameResponse(_) => println!("Received invalid packet from Server. ChangeNameResponse should only be received once at application startup."),
-				Packet::RequestClientList => println!("Received invalid packet from Server. RequestClientList is only valid in direction Client -> Server."),
-				Packet::ClientList(clients) => {
-					println!("Clients currently on the server: ");
-					for (_, name) in clients {
-						println!("{}", name);
-					}
-
-					// Update to the newest client list. This should be always kept up to date by
-					// the server, but depending on the implementation that might be different.
-					self.last_cli_list = clients;
-				},
-				Packet::RequestGame(from) => println!("Incoming game request from: {}", from)
-			}
-
-			true
-		};
-
 		if timeout.is_some() {
 			let end_time = Instant::now() + timeout.unwrap();
 			while Instant::now() < end_time {
-				if !try_recv_and_handle() {
+				if !self.try_recv_and_handle() {
 					return;
 				}
 			}
 		}
 		else {
-			while try_recv_and_handle() {}
+			while self.try_recv_and_handle() {}
 		}
 	}
 
-	/// Shut the NetHandler down. After this, the NetHandler can no longer receive any packets or
-	/// send anything.
-	pub fn shutdown(&mut self) {
+	#[inline]
+	fn try_recv_and_handle(&mut self) -> bool {
+		let p_rcv: &Receiver<Packet> = self.p_rcv.as_ref().unwrap();
+
+		let p = match p_rcv.try_recv() {
+			Ok(p) => p,
+			Err(err) => { println!("Error handling packet. {}", err); return false; }
+		};
+
+		match p {
+			Packet::ChangeNameRequest(_) => println!("Received invalid packet from Server. ChangeNameRequest is only valid in direction Client -> Server."),
+			Packet::ChangeNameResponse(_) => println!("Received invalid packet from Server. ChangeNameResponse should only be received once at application startup."),
+			Packet::RequestClientList => println!("Received invalid packet from Server. RequestClientList is only valid in direction Client -> Server."),
+			Packet::ClientList(clients) => {
+				println!("Clients currently on the server: ");
+				for &(_, ref name) in &clients {
+					println!("{}", name);
+				}
+
+				// Update to the newest client list. This should be always kept up to date by
+				// the server, but depending on the implementation that might be different.
+				self.last_cli_list = clients;
+			},
+			Packet::RequestGame(from) => println!("Incoming game request from: {}", from)
+		}
+
+		true
+	}
+
+	/// Shut the NetHandler down.
+	pub fn shutdown(mut self) {
 		drop(self.remote);
 
 		if let Some(h) = self.rcv_handle {
@@ -161,16 +163,18 @@ impl NetHandler {
 		self.remote.write_packet(&p)
 	}
 
-	/// Send a request to the player with the string.
+	/// Send a request to the player with the string. Returns true, if the Request could be made,
+	/// not if the other client has accepted it.
 	pub fn request_game(&self, to: String) -> bool {
 		// Look if the client actually exists in the current client table
 		let mut succ = false;
-		for (_, client) in self.last_cli_list {
-			if client == to {
+		for &(_, ref client) in &self.last_cli_list {
+			if *client == to {
 				succ = true;
 			}
 		}
 
+		// Send the request to the server.
 		if succ {
 			let p = Packet::RequestGame(to);
 			succ &= self.remote.write_packet(&p);
