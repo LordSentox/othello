@@ -1,5 +1,6 @@
 use nethandler::*;
 
+use std::any::Any;
 use std::sync::Arc;
 use remote::Remote;
 use packets::*;
@@ -26,6 +27,10 @@ impl LoginSequence {
 impl PacketSequence for LoginSequence {
 	fn status(&self) -> Status {
 		self.status
+	}
+
+	fn as_any(&self) -> &Any {
+		self
 	}
 
 	fn on_packet(&mut self, packet: &Packet) -> bool {

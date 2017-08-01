@@ -7,6 +7,7 @@ use std::thread;
 use std::thread::JoinHandle;
 use login_sequence::LoginSequence;
 use request_game_sequence::RequestGameSequence;
+use std::any::Any;
 use remote::*;
 use std::io::Error as IOError;
 use packets::*;
@@ -27,6 +28,10 @@ pub enum Status {
 pub trait PacketSequence {
 	/// The status of the packet sequence.
 	fn status(&self) -> Status;
+
+	/// Get an Any type from the Sequence, to dynamically check which type of
+	/// sequence is referenced.
+	fn as_any(&self) -> &Any;
 
 	/// When a packet comes in, it is checked, if this PacketSequence has something to do
 	/// with it. Returns true, if the packet is captured. The packet will not be processed
@@ -133,11 +138,13 @@ impl NetHandler {
 
 	#[inline]
 	fn try_recv_and_handle(&mut self) -> bool {
-		let p_rcv: &Receiver<Packet> = self.p_rcv.as_ref().unwrap();
+		let p = {
+			let p_rcv: &Receiver<Packet> = self.p_rcv.as_ref().unwrap();
 
-		let p = match p_rcv.try_recv() {
-			Ok(p) => p,
-			Err(err) => { println!("Error handling packet. {}", err); return false; }
+			match p_rcv.try_recv() {
+				Ok(p) => p,
+				Err(err) => { println!("Error handling packet. {}", err); return false; }
+			}
 		};
 
 	 	// Currently running sequences might be interested in the packet.
@@ -147,13 +154,14 @@ impl NetHandler {
 			// Handle the packet and stop continuing in case it has been captured.
 			let captured = self.sequences[i].on_packet(&p);
 
-			match self.sequences[i].status() {
+			let mut cur_seq = self.sequences.get_mut(i).expect("Index out of bounds.");
+			match cur_seq.status() {
 				Status::Finished(true) => {
-					self.sequences[i].on_success(&mut self);
+					cur_seq.on_success(self);
 					self.sequences.swap_remove(i);
 				}
 				Status::Finished(false) => {
-					self.sequences[i].on_failure(&mut self);
+					self.sequences[i].on_failure(self);
 					self.sequences.swap_remove(i);
 				}
 				Status::Running => {}
@@ -181,6 +189,7 @@ impl NetHandler {
 				self.last_cli_list = clients;
 			},
 			Packet::RequestGame(from) => println!("Incoming game request from: {}", from),
+			_ => { unimplemented!(); }
 		}
 
 		true
@@ -213,6 +222,11 @@ impl NetHandler {
 	/// be updated by the server, but generally it should be taken with a grain of salt.
 	pub fn clients(&self) -> &Vec<(ClientId, String)> {
 		&self.last_cli_list
+	}
+
+	/// All PacketSequences this handler is currently handling.
+	pub fn sequences(&self) -> &Vec<Box<PacketSequence>> {
+		&self.sequences
 	}
 
 	/// Send a request to the player with the string. Returns true, if the Request could be made,

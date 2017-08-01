@@ -1,3 +1,4 @@
+use std::any::Any;
 use nethandler::*;
 use packets::Packet;
 
@@ -38,8 +39,19 @@ impl RequestGameSequence {
 		}
 	}
 
-	pub fn remote_request(remote_name: &str) -> Option<RequestGameSequence> {
+	pub fn remote_request(remote_name: &str, handler: &NetHandler) -> Option<RequestGameSequence> {
+		// Check if there is already a request from the client that is being
+		// handled.
+		for ref sequence in handler.sequences() {
+			if let Some(req) = sequence.as_any().downcast_ref::<RequestGameSequence>() {
+				if req.remote_name == remote_name {
+					println!("Received request from {}, but a request is already noted.", remote_name);
+					return None;
+				}
+			}
+		}
 
+		unimplemented!();
 	}
 }
 
@@ -48,11 +60,15 @@ impl PacketSequence for RequestGameSequence {
 		self.status
 	}
 
-	fn on_packet(&mut self, packet: &Packet) -> bool {
+	fn as_any(&self) -> &Any {
+		self
+	}
 
+	fn on_packet(&mut self, packet: &Packet) -> bool {
+		unimplemented!();
 	}
 
 	fn on_success(&mut self, handler: &mut NetHandler) {
-
+		unimplemented!();
 	}
 }
