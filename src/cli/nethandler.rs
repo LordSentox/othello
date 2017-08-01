@@ -39,10 +39,10 @@ pub trait PacketSequence {
 	fn on_packet(&mut self, packet: &Packet) -> bool;
 
 	/// When the status returns Finished(true), this function is called.
-	fn on_success(&mut self, handler: &mut NetHandler) {}
+	fn on_success(&self, handler: &mut NetHandler) {}
 
 	/// When the status returns Finished(false), this function is called.
-	fn on_failure(&mut self, handler: &mut NetHandler) {}
+	fn on_failure(&self, handler: &mut NetHandler) {}
 }
 
 pub struct NetHandler {
@@ -150,28 +150,28 @@ impl NetHandler {
 	 	// Currently running sequences might be interested in the packet.
 		// The sequences are iterated in reverse order, so removing an
 		// element does not make the algorithm skip anything.
-		for i in (0..self.sequences.len()).rev() {
-			// Handle the packet and stop continuing in case it has been captured.
-			let captured = self.sequences[i].on_packet(&p);
-
-			let mut cur_seq = self.sequences.get_mut(i).expect("Index out of bounds.");
-			match cur_seq.status() {
-				Status::Finished(true) => {
-					cur_seq.on_success(self);
-					self.sequences.swap_remove(i);
-				}
-				Status::Finished(false) => {
-					self.sequences[i].on_failure(self);
-					self.sequences.swap_remove(i);
-				}
-				Status::Running => {}
-			}
-
-			// If the packet has been captured, the rest of the function can be skipped.
-			if captured {
-				return false;
-			}
-		}
+		// for i in (0..self.sequences.len()).rev() {
+		// 	// Handle the packet and stop continuing in case it has been captured.
+		// 	let captured = self.sequences[i].on_packet(&p);
+		//
+		// 	let mut cur_seq = self.sequences.get_mut(i).expect("Index out of bounds.");
+		// 	match cur_seq.status() {
+		// 		Status::Finished(true) => {
+		// 			cur_seq.on_success(self);
+		// 			self.sequences.swap_remove(i);
+		// 		}
+		// 		Status::Finished(false) => {
+		// 			self.sequences[i].on_failure(self);
+		// 			self.sequences.swap_remove(i);
+		// 		}
+		// 		Status::Running => {}
+		// 	}
+		//
+		// 	// If the packet has been captured, the rest of the function can be skipped.
+		// 	if captured {
+		// 		return false;
+		// 	}
+		// }
 
 		// Handle packets that are not part of a specific sequence.
 		match p {
