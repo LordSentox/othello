@@ -4,7 +4,7 @@ extern crate serde_derive;
 extern crate bincode;
 extern crate toml;
 
-#[macro_use]
+pub mod board;
 pub mod packets;
 pub mod remote;
 pub mod srv;

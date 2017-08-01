@@ -1,5 +1,5 @@
 // A piece that might be placed on the board.
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Piece {
 	BLACK,
 	WHITE

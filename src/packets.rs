@@ -4,6 +4,8 @@ use std::net::TcpStream;
 use std::io::{Read, Write};
 use std::io;
 
+use board::Piece;
+
 pub type ClientId = u64;
 pub use std::u64::MAX as ClientIdMAX;
 
@@ -31,7 +33,10 @@ pub enum Packet {
 	ClientList(Vec<(ClientId, String)>),
 	/// Request a game. On the server, "String" is the name of the requestee, on the client the name
 	/// of the one who has requested.
-	RequestGame(String)
+	RequestGame(String),
+	/// Start a game with a fresh board. This is Server->Client only and the colour the client will
+	/// be controlling is sent.
+	StartGame(Piece)
 }
 
 impl Packet {

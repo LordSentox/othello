@@ -5,6 +5,8 @@ use std::net::{TcpStream, ToSocketAddrs};
 use std::time::{Duration, Instant};
 use std::thread;
 use std::thread::JoinHandle;
+use login_sequence::LoginSequence;
+use request_game_sequence::RequestGameSequence;
 use remote::*;
 use std::io::Error as IOError;
 use packets::*;
@@ -16,16 +18,39 @@ pub enum Error {
 	Receive(PacketReadError)
 }
 
+#[derive(Copy, Clone)]
+pub enum Status {
+	Running,
+	Finished(bool)
+}
+
+pub trait PacketSequence {
+	/// The status of the packet sequence.
+	fn status(&self) -> Status;
+
+	/// When a packet comes in, it is checked, if this PacketSequence has something to do
+	/// with it. Returns true, if the packet is captured. The packet will not be processed
+	/// any further.
+	fn on_packet(&mut self, packet: &Packet) -> bool;
+
+	/// When the status returns Finished(true), this function is called.
+	fn on_success(&mut self, handler: &mut NetHandler) {}
+
+	/// When the status returns Finished(false), this function is called.
+	fn on_failure(&mut self, handler: &mut NetHandler) {}
+}
+
 pub struct NetHandler {
 	remote: Arc<Remote>,
 	rcv_handle: Option<JoinHandle<()>>,
 	p_rcv: Option<Receiver<Packet>>,
-	last_cli_list: Vec<(ClientId, String)>
+	last_cli_list: Vec<(ClientId, String)>,
+	sequences: Vec<Box<PacketSequence>>
 }
 
 impl NetHandler {
 	/// Attempts to connect to a server on the given address with the provided
-	/// name.
+	/// login name.
 	/// Returns a NetHandler on success. The NetHandler will however not start
 	/// receiving packets until explicitly asked.
 	pub fn new<A>(addrs: A, name: &str) -> Result<NetHandler, Error> where A: ToSocketAddrs {
@@ -36,40 +61,30 @@ impl NetHandler {
 		};
 
 		let remote = match Remote::new(stream) {
-			Ok(remote) => remote,
+			Ok(remote) => Arc::new(remote),
 			Err(err) => { return Err(Error::IO(err)); }
 		};
 
-		// The connection has been established. Now we will change the name of
-		// the client on the server, so that other clients can identify us easier.
-		let p = Packet::ChangeNameRequest(name.to_string());
-		if !remote.write_packet(&p) {
-			return Err(Error::NameChangeFailed);
-		}
+		// Start the login sequence and wait until it is finished.
+		let mut login = LoginSequence::start(remote.clone(), name).unwrap();
 
-		// Checkt that it has worked.
-		// TODO: Currently there is no timeout on this, which could cause problems,
-		// even though if the server closes the connection it does end.
-		loop {
+		while let Status::Running = login.status() {
 			match remote.read_packet() {
-				Ok(Packet::ChangeNameResponse(true)) => {
-					println!("Name has been set on the server.");
-					break;
-				},
-				Ok(Packet::ChangeNameResponse(false)) => {
-					println!("Name request has been denied by the server.");
-					return Err(Error::NameChangeFailed);
-				}
-				Ok(p) => println!("Received unexpected packet from server: {:?} .. ignoring", p),
+				Ok(p) => { login.on_packet(&p); },
 				Err(err) => return Err(Error::Receive(err))
 			}
 		}
 
+		if let Status::Finished(false) = login.status() {
+			return Err(Error::NameChangeFailed);
+		}
+
 		Ok(NetHandler {
-			remote: Arc::new(remote),
+			remote: remote,
 			rcv_handle: None,
 			p_rcv: None,
-			last_cli_list: Vec::new()
+			last_cli_list: Vec::new(),
+			sequences: Vec::new()
 		})
 	}
 
@@ -125,6 +140,32 @@ impl NetHandler {
 			Err(err) => { println!("Error handling packet. {}", err); return false; }
 		};
 
+	 	// Currently running sequences might be interested in the packet.
+		// The sequences are iterated in reverse order, so removing an
+		// element does not make the algorithm skip anything.
+		for i in (0..self.sequences.len()).rev() {
+			// Handle the packet and stop continuing in case it has been captured.
+			let captured = self.sequences[i].on_packet(&p);
+
+			match self.sequences[i].status() {
+				Status::Finished(true) => {
+					self.sequences[i].on_success(&mut self);
+					self.sequences.swap_remove(i);
+				}
+				Status::Finished(false) => {
+					self.sequences[i].on_failure(&mut self);
+					self.sequences.swap_remove(i);
+				}
+				Status::Running => {}
+			}
+
+			// If the packet has been captured, the rest of the function can be skipped.
+			if captured {
+				return false;
+			}
+		}
+
+		// Handle packets that are not part of a specific sequence.
 		match p {
 			Packet::ChangeNameRequest(_) => println!("Received invalid packet from Server. ChangeNameRequest is only valid in direction Client -> Server."),
 			Packet::ChangeNameResponse(_) => println!("Received invalid packet from Server. ChangeNameResponse should only be received once at application startup."),
@@ -139,7 +180,7 @@ impl NetHandler {
 				// the server, but depending on the implementation that might be different.
 				self.last_cli_list = clients;
 			},
-			Packet::RequestGame(from) => println!("Incoming game request from: {}", from)
+			Packet::RequestGame(from) => println!("Incoming game request from: {}", from),
 		}
 
 		true
@@ -154,6 +195,11 @@ impl NetHandler {
 		}
 	}
 
+	/// Write a custom packet to the server.
+	pub fn write_packet(&self, p: &Packet) -> bool {
+		self.remote.write_packet(&p)
+	}
+
 	/// Send a request to the server to send back the client list.
 	/// This action does not wait until the list has been returned. The packet
 	/// that is sent back will be processed through the normal channel.
@@ -163,23 +209,23 @@ impl NetHandler {
 		self.remote.write_packet(&p)
 	}
 
+	/// The last client list that has been received from the server. This should always
+	/// be updated by the server, but generally it should be taken with a grain of salt.
+	pub fn clients(&self) -> &Vec<(ClientId, String)> {
+		&self.last_cli_list
+	}
+
 	/// Send a request to the player with the string. Returns true, if the Request could be made,
 	/// not if the other client has accepted it.
-	pub fn request_game(&self, to: String) -> bool {
-		// Look if the client actually exists in the current client table
-		let mut succ = false;
-		for &(_, ref client) in &self.last_cli_list {
-			if *client == to {
-				succ = true;
+	pub fn request_game(&mut self, to: &str) -> bool {
+		match RequestGameSequence::local_request(to, &self) {
+			Some(request) => {
+				self.sequences.push(Box::new(request));
+				true
+			}
+			None => {
+				false
 			}
 		}
-
-		// Send the request to the server.
-		if succ {
-			let p = Packet::RequestGame(to);
-			succ &= self.remote.write_packet(&p);
-		}
-
-		succ
 	}
 }

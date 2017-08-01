@@ -1,15 +1,24 @@
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Weak, RwLock};
 use std::thread;
 use std::net::TcpStream;
 use super::NetHandler;
 use remote::Remote;
 use packets::*;
+use board::*;
+
+/// A Game with another client.
+struct Game {
+	pub board: Arc<RwLock<Board>>,
+	pub opponent: Weak<RwLock<Client>>,
+	pub piece: Piece
+}
 
 pub struct Client {
 	id: ClientId,
 	name: String,
 	remote: Remote,
 	pending_request: Option<String>,
+	game: Option<Game>,
 	nethandler: Arc<RwLock<NetHandler>>
 }
 
@@ -25,6 +34,7 @@ impl Client {
 			name: String::new(),
 			remote: Remote::new(stream).expect("Could not establish connection"),
 			pending_request: None,
+			game: None,
 			nethandler: handler
 		}
 	}
@@ -97,13 +107,14 @@ impl Client {
 	}
 
 	/// Request a game from the client with the provided name.
-	fn request_game(&mut self, target: &String) {
+	/// Returns the requestee in case a game should be started, None otherwise.
+	fn request_game(&mut self, target: &String) -> Option<Weak<RwLock<Client>>> {
 		// TODO: The client should be informed, if the target client actually
 		// does not exist, instead of this case just being ignored.
 
 		let target_client = match self.nethandler.read().unwrap().get_by_name(&target) {
 			Some(target) => target,
-			None => return
+			None => return None
 		};
 
 		// The target exists, so register that the game should be played.
@@ -113,7 +124,10 @@ impl Client {
 		if Some(self.name.clone()) == target_client_arc.read().unwrap().pending_request {
 			// The target has already requested a game from this client, so a
 			// game should be started.
-			unimplemented!();
+			Some(target_client)
+		}
+		else {
+			None
 		}
 	}
 
@@ -127,7 +141,13 @@ impl Client {
 			Packet::ChangeNameResponse(_) => println!("Packet [ChangeNameResponse] is only valid in direction Server->Client."),
 			Packet::RequestClientList => client.read().unwrap().send_clients_to_peer(),
 			Packet::ClientList(_) => println!("Packet [ClientList] is only valid in direction Server->Client."),
-			Packet::RequestGame(requestee_name) => client.write().unwrap().request_game(&requestee_name)
+			Packet::RequestGame(requestee_name) => {
+				if let Some(requestee) = client.write().unwrap().request_game(&requestee_name) {
+					// Start the game between the two clients.
+
+				}
+			},
+			Packet::StartGame(_) => println!("Packet [StartGame] is only valid in direction Server->Client")
 		}
 	}
 
