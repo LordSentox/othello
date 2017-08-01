@@ -34,8 +34,9 @@ fn main() {
 
 	// Create the connection to the server. Later, this could be read from a
 	// config file, with a little more galant error checking as well.
-	let mut nethandler = NetHandler::new(&args[1], &args[2]).unwrap();
-	nethandler.start_receiving();
+	// TODO: uncomment this.
+	// let mut nethandler = NetHandler::new(&args[1], &args[2]).unwrap();
+	// nethandler.start_receiving();
 
 	// Create the window of the application
 	let mut window = RenderWindow::new(VideoMode::new(512, 532, 32), "SFML Othello", style::CLOSE, &ContextSettings::default()).unwrap();
