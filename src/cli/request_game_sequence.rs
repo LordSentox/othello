@@ -29,13 +29,14 @@ impl RequestGameSequence {
 			}
 		}
 
-		// Send the request to the server.
-		if succ {
-			let p = Packet::RequestGame(to.to_string());
-			succ &= handler.write_packet(&p);
+		if !succ {
+			println!("The player you requested is not currently on the server.");
+			return None;
 		}
 
-		if succ {
+		// Send the request to the server.
+		let p = Packet::RequestGame(to.to_string());
+		if handler.write_packet(&p) {
 			// The request has been sent. Now it's time to wait for the response.
 			Some(RequestGameSequence {
 				remote_name: to.to_string(),
