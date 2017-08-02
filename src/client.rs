@@ -39,7 +39,7 @@ fn main() {
 	// nethandler.start_receiving();
 
 	// Create the window of the application
-	let mut window = RenderWindow::new(VideoMode::new(512, 532, 32), "SFML Othello", style::CLOSE, &ContextSettings::default()).unwrap();
+	let mut window = RenderWindow::new(VideoMode::new(1024, 1044, 32), "SFML Othello", style::CLOSE, &ContextSettings::default()).unwrap();
 	window.set_framerate_limit(30);
 
 	// Create a test board and print its contents.
@@ -59,7 +59,7 @@ fn main() {
 			}
 			else if let Event::MouseButtonPressed {button, x, y} = event {
 				if button == Button::Left {
-					if board.place(((x/64) as u8, (y/64) as u8), next_piece) {
+					if board.place(((x/128) as u8, (y/128) as u8), next_piece) {
 						score.update_score(&board);
 						next_piece = next_piece.opposite();
 					}

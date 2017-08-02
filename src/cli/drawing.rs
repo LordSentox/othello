@@ -10,11 +10,11 @@ impl Drawable for Board {
 		for x in 0..8 {
 			for y in 0..8 {
 				// Draw the underlying board.
-				let mut board_rect = RectangleShape::with_size(&Vector2f::new(64., 64.));
+				let mut board_rect = RectangleShape::with_size(&Vector2f::new(128., 128.));
 				board_rect.set_outline_thickness(-1.);
 				board_rect.set_outline_color(&Color::rgb(55, 55, 55));
 				board_rect.set_fill_color(&Color::transparent());
-				board_rect.set_position(&Vector2f::new(64. * x as f32, 64. * y as f32));
+				board_rect.set_position(&Vector2f::new(128. * x as f32, 128. * y as f32));
 				target.draw(&board_rect);
 
 				// Draw the stone if one is on the board at the correct coordinates.
@@ -32,8 +32,8 @@ impl Drawable for Board {
 					None => continue
 				};
 
-				circle_shape.set_radius(32.);
-				circle_shape.set_position(&Vector2f::new(64. * x as f32, 64. * y as f32));
+				circle_shape.set_radius(64.);
+				circle_shape.set_position(&Vector2f::new(128. * x as f32, 128. * y as f32));
 
 				target.draw(&circle_shape);
 			}
@@ -41,7 +41,7 @@ impl Drawable for Board {
 	}
 }
 
-const LENGTH: f32 = 512.;
+const LENGTH: f32 = 1024.;
 const HEIGHT: f32 = 20.;
 impl Drawable for Score {
 	fn draw<'se, 'tex, 'sh, 'shte>(&'se self, target: &mut RenderTarget, _: RenderStates<'tex, 'sh, 'shte>)
@@ -51,8 +51,8 @@ impl Drawable for Score {
 		let mut white_bar = RectangleShape::with_size(&Vector2f::new(white as f32 / (white + black) as f32 * LENGTH, HEIGHT));
 		let mut black_bar = RectangleShape::with_size(&Vector2f::new(LENGTH, HEIGHT));
 
-		white_bar.set_position(&Vector2f::new(0., 512.));
-		black_bar.set_position(&Vector2f::new(0., 512.));
+		white_bar.set_position(&Vector2f::new(0., 1024.));
+		black_bar.set_position(&Vector2f::new(0., 1024.));
 
 		white_bar.set_fill_color(&Color::white());
 		black_bar.set_fill_color(&Color::black());
