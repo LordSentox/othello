@@ -68,7 +68,7 @@ impl PacketSequence for RequestGameSequence {
 		unimplemented!();
 	}
 
-	fn on_success(&self, handler: &mut NetHandler) {
+	fn on_success(&mut self) {
 		unimplemented!();
 	}
 }
