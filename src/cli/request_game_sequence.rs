@@ -1,4 +1,6 @@
 use std::any::Any;
+use std::sync::{Arc, Mutex};
+use game::Game;
 use nethandler::*;
 use packets::Packet;
 
@@ -10,7 +12,15 @@ pub struct RequestGameSequence {
 }
 
 impl RequestGameSequence {
-	pub fn local_request(to: &str, handler: &NetHandler) -> Option<RequestGameSequence> {
+	/// Start a request from the local player to the player with the provided name.
+	/// game is a pointer to the game which might be started. It must be None initially.
+	pub fn local_request(to: &str, handler: &NetHandler, game: Arc<Mutex<Option<Game>>>) -> Option<RequestGameSequence> {
+		// Check if the game has already been started.
+		if game.lock().unwrap().is_some() {
+			println!("A game is already running. The request could not be made.");
+			return None;
+		}
+
 		// Look if the client actually exists in the current client table
 		let mut succ = false;
 		for &(_, ref client) in handler.clients() {

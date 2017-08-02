@@ -1,12 +1,13 @@
 use std::sync::mpsc::Receiver;
 use std::sync::mpsc;
-use std::sync::{Arc, Weak};
+use std::sync::{Arc, Mutex, Weak};
 use std::net::{TcpStream, ToSocketAddrs};
 use std::time::{Duration, Instant};
 use std::thread;
 use std::thread::JoinHandle;
 use login_sequence::LoginSequence;
 use request_game_sequence::RequestGameSequence;
+use game::Game;
 use std::any::Any;
 use remote::*;
 use std::io::Error as IOError;
@@ -50,7 +51,8 @@ pub struct NetHandler {
 	rcv_handle: Option<JoinHandle<()>>,
 	p_rcv: Option<Receiver<Packet>>,
 	last_cli_list: Vec<(ClientId, String)>,
-	sequences: Vec<Box<PacketSequence>>
+	sequences: Vec<Box<PacketSequence>>,
+	game: Arc<Mutex<Option<Game>>>
 }
 
 impl NetHandler {
@@ -89,7 +91,8 @@ impl NetHandler {
 			rcv_handle: None,
 			p_rcv: None,
 			last_cli_list: Vec::new(),
-			sequences: Vec::new()
+			sequences: Vec::new(),
+			game: Arc::new(Mutex::new(None))
 		})
 	}
 
@@ -238,7 +241,8 @@ impl NetHandler {
 	/// Send a request to the player with the string. Returns true, if the Request could be made,
 	/// not if the other client has accepted it.
 	pub fn request_game(&mut self, to: &str) -> bool {
-		match RequestGameSequence::local_request(to, &self) {
+		let game = self.game.clone();
+		match RequestGameSequence::local_request(to, &self, game) {
 			Some(request) => {
 				self.sequences.push(Box::new(request));
 				true
