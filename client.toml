@@ -4,7 +4,7 @@ server_port = 44942
 login_name = "John Doe"
 
 [graphics]
-board = "data/board.png"
+board = "data/board_test.png"
 # square_size = 64
-white_piece = "data/white.png"
-black_piece = "data/black.png"
+white_piece = "data/white_piece_test.png"
+black_piece = "data/black_piece_test.png"
