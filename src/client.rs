@@ -2,6 +2,7 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate bincode;
+extern crate lazy_static;
 extern crate sfml;
 extern crate toml;
 
