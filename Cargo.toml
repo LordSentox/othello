@@ -14,6 +14,7 @@ path = "src/client.rs"
 [dependencies]
 sfml = "*"
 bincode = "*"
+lazy_static = "*"
 serde = "*"
 serde_derive = "*"
 toml = "*"

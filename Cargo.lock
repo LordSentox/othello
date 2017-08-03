@@ -3,6 +3,7 @@ name = "othello"
 version = "0.1.0"
 dependencies = [
  "bincode 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "sfml 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -64,6 +65,11 @@ dependencies = [
  "csfml-system-sys 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "sfml-build 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "lazy_static"
+version = "0.2.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "num-traits"
@@ -155,6 +161,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum csfml-graphics-sys 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b67a44fb803eb98705c0d99a6ad753bfbc6b2cdff2ac16d6729474b30669a18c"
 "checksum csfml-system-sys 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "8e387e2fb463b825be4b551aa77311fa4d93f18c0074d3a7324933743b57d1c5"
 "checksum csfml-window-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d28e267fedb2bedb425b7aae485554dfba3ec0ba5dbf649bfaa6742c87d34549"
+"checksum lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "3b37545ab726dd833ec6420aaba8231c5b320814b9029ad585555d2a03e94fbf"
 "checksum num-traits 0.1.39 (registry+https://github.com/rust-lang/crates.io-index)" = "1708c0628602a98b52fad936cf3edb9a107af06e52e49fdf0707e884456a6af6"
 "checksum quote 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)" = "7a6e920b65c65f10b2ae65c831a81a073a89edd28c7cce89475bff467ab4167a"
 "checksum serde 1.0.9 (registry+https://github.com/rust-lang/crates.io-index)" = "6a7c6b751a2e8d5df57a5ff71b5b4fc8aaee9ee28ff1341d640dd130bb5f4f7a"
