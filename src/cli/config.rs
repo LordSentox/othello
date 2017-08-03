@@ -4,14 +4,15 @@ use std::io;
 use toml;
 
 lazy_static! {
-	static ref CONFIG: Config = {
+	pub static ref CONFIG: Config = {
 		match Config::load() {
 			Ok(conf) => conf,
-			Err(err) => panic!("Could not find configuration file 'client.toml'")
+			Err(err) => panic!("Could not find configuration file 'client.toml'. {:?}", err)
 		}
 	};
 }
 
+#[derive(Debug)]
 pub enum ReadError {
 	IO(io::Error),
 	TOML(toml::de::Error)
@@ -19,23 +20,24 @@ pub enum ReadError {
 
 #[derive(Deserialize)]
 pub struct Network {
-	server_ip: String,
-	server_port: u16,
-	login_name: String
+	pub server_ip: String,
+	pub server_port: u16,
+	pub login_name: String
 }
 
 #[derive(Deserialize)]
 pub struct Graphics {
-	board: String,
-	square_size: Option<u16>,
-	stone: String
+	pub board: String,
+	pub square_size: Option<u16>,
+	pub white_piece: String,
+	pub black_piece: String
 }
 
 // Holds the client configuration.
 #[derive(Deserialize)]
 pub struct Config {
-	network: Network,
-	graphics: Graphics
+	pub network: Network,
+	pub graphics: Graphics
 }
 
 impl Config {

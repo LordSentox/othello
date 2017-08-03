@@ -1,6 +1,9 @@
 pub mod config;
 pub use self::config::*;
 
+pub mod drawable_board;
+pub use self::drawable_board::DrawableBoard;
+
 pub mod drawing;
 pub use self::drawing::*;
 
@@ -15,6 +18,3 @@ pub use self::nethandler::NetHandler;
 
 pub mod request_game_sequence;
 pub use self::request_game_sequence::*;
-
-pub mod textures;
-pub use self::textures::*;

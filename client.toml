@@ -1,9 +1,10 @@
-[Network]
-server_ip = "localhost",
-server_port = 44942,
+[network]
+server_ip = "localhost"
+server_port = 44942
 login_name = "John Doe"
 
-[Graphics]
+[graphics]
 board = "data/board.png"
 # square_size = 64
-stone = "data/stone.png"
+white_piece = "data/white.png"
+black_piece = "data/black.png"

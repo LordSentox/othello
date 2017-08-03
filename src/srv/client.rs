@@ -147,7 +147,8 @@ impl Client {
 
 				}
 			},
-			Packet::StartGame(_) => println!("Packet [StartGame] is only valid in direction Server->Client")
+			Packet::StartGame(_) => println!("Packet [StartGame] is only valid in direction Server->Client"),
+			Packet::RequestGameResponse(name, succ) => { unimplemented!(); }
 		}
 	}
 

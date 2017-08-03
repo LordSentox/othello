@@ -25,28 +25,19 @@ use cli::*;
 fn main() {
 	// Connect to a server
 	println!("Welcome to othello.");
-	let args: Vec<String> = std::env::args().collect();
-	if args.len() < 2 {
-		panic!("Could not start client. Please provide the IP of the server you want to connect to.");
-	}
-
-	if args.len() < 3 {
-		panic!("Could not start client. Please provide a name to identify yourself on the server.");
-	}
 
 	// Create the connection to the server. Later, this could be read from a
 	// config file, with a little more galant error checking as well.
 	// TODO: uncomment this.
-	let mut nethandler = NetHandler::new(&args[1], &args[2]).unwrap();
-	nethandler.start_receiving();
+	//let mut nethandler = NetHandler::new((CONFIG.network.server_ip.as_str(), CONFIG.network.server_port), &CONFIG.network.login_name).unwrap();
+	//nethandler.start_receiving();
 
 	// Create the window of the application
 	let mut window = RenderWindow::new(VideoMode::new(512, 532, 32), "SFML Othello", style::CLOSE, &ContextSettings::default()).unwrap();
 	window.set_framerate_limit(30);
 
-	// Create a test board and print its contents.
-	let mut board = Board::new();
-	board.print();
+	// Create a test board.
+	let mut board = DrawableBoard::new(Board::new()).unwrap();
 
 	// Create the Score Bar
 	let mut score = Score::new(&board);
