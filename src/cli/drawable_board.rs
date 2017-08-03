@@ -8,7 +8,7 @@ pub struct DrawableBoard {
 	board_tex: Texture,
 	white_piece_tex: Texture,
 	black_piece_tex: Texture,
-	pub inner: Board
+	inner: Board
 }
 
 impl DrawableBoard {
@@ -50,6 +50,28 @@ impl DrawableBoard {
 			inner: board
 		})
 	}
+
+	/// The size (width and height are the same) of the entire board.
+	pub fn size(&self) -> u32 {
+		self.board_tex.size().x as u32
+	}
+
+	/// Get the size (width and height are the same) of an individual board piece.
+	pub fn piece_size(&self) -> u16 {
+		match CONFIG.graphics.square_size {
+			Some(size) => size,
+			None => (self.board_tex.size().x / 8) as u16
+		}
+	}
+
+	/// Translates a position (usually of the mouse cursor) and translates it
+	/// to the indices of the corresponding piece.
+	pub fn piece_index(&self, x: u32, y: u32) -> (u8, u8) {
+		let x = (x/64) as u8;
+		let y = (y/64) as u8;
+
+		(x, y)
+	}
 }
 
 impl Drawable for DrawableBoard {
@@ -73,11 +95,7 @@ impl Drawable for DrawableBoard {
 					None => continue
 				};
 
-				let size = match CONFIG.graphics.square_size {
-					Some(size) => size,
-					None => (self.board_tex.size().x / 8) as u16
-				};
-
+				let size = self.piece_size();
 				sprite.set_position2f((x as u16*size) as f32, (y as u16*size) as f32);
 				target.draw(&sprite);
 			}

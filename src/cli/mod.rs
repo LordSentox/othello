@@ -4,8 +4,8 @@ pub use self::config::*;
 pub mod drawable_board;
 pub use self::drawable_board::DrawableBoard;
 
-pub mod drawing;
-pub use self::drawing::*;
+pub mod drawable_score;
+pub use self::drawable_score::*;
 
 pub mod game;
 pub use self::game::*;

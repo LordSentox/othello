@@ -18,9 +18,11 @@ use score::{Score};
 
 use sfml::window::{ContextSettings, VideoMode, Event, style};
 use sfml::window::mouse::Button;
-use sfml::graphics::{Color, RenderTarget, RenderWindow};
+use sfml::graphics::{Color, Rect, RenderTarget, RenderWindow};
 
 use cli::*;
+
+const SCORE_HEIGHT: u32 = 20;
 
 fn main() {
 	// Connect to a server
@@ -32,15 +34,22 @@ fn main() {
 	//let mut nethandler = NetHandler::new((CONFIG.network.server_ip.as_str(), CONFIG.network.server_port), &CONFIG.network.login_name).unwrap();
 	//nethandler.start_receiving();
 
-	// Create the window of the application
-	let mut window = RenderWindow::new(VideoMode::new(512, 532, 32), "SFML Othello", style::CLOSE, &ContextSettings::default()).unwrap();
-	window.set_framerate_limit(30);
-
 	// Create a test board.
 	let mut board = DrawableBoard::new(Board::new()).unwrap();
 
+	// Create the window of the application
+	let mut window = RenderWindow::new(VideoMode::new(board.size(), board.size() + SCORE_HEIGHT, 32), "SFML Othello", style::CLOSE, &ContextSettings::default()).unwrap();
+	window.set_framerate_limit(30);
+
+
 	// Create the Score Bar
-	let mut score = Score::new(&board);
+	let score_size = Rect::<u32> {
+		left: 0,
+		top: board.size(),
+		width: board.size(),
+		height: SCORE_HEIGHT
+	};
+	let mut score = DrawableScore::new(Score::new(&board), score_size);
 
 	// The player to set the first stone is black.
 	let mut next_piece = Piece::BLACK;
@@ -52,7 +61,8 @@ fn main() {
 			}
 			else if let Event::MouseButtonPressed {button, x, y} = event {
 				if button == Button::Left {
-					if board.place(((x/64) as u8, (y/64) as u8), next_piece) {
+					let pos = board.piece_index(x as u32, y as u32);
+					if board.place(pos, next_piece) {
 						score.update_score(&board);
 						next_piece = next_piece.opposite();
 					}
