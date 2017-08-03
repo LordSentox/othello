@@ -9,7 +9,7 @@ lazy_static! {
 			Ok(conf) => conf,
 			Err(err) => panic!("Could not find configuration file 'client.toml'")
 		}
-	}
+	};
 }
 
 pub enum ReadError {
@@ -27,6 +27,7 @@ pub struct Network {
 #[derive(Deserialize)]
 pub struct Graphics {
 	board: String,
+	square_size: Option<u16>,
 	stone: String
 }
 
