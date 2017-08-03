@@ -30,7 +30,8 @@ pub struct Graphics {
 	pub board: String,
 	pub square_size: Option<u16>,
 	pub white_piece: String,
-	pub black_piece: String
+	pub black_piece: String,
+	pub shadow: Option<String>
 }
 
 // Holds the client configuration.

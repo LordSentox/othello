@@ -8,3 +8,4 @@ board = "data/board_test.png"
 # square_size = 64
 white_piece = "data/white_piece_test.png"
 black_piece = "data/black_piece_test.png"
+shadow = "data/shadow_test.png"
