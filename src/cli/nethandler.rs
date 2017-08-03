@@ -48,6 +48,7 @@ pub trait PacketSequence {
 
 pub struct NetHandler {
 	remote: Arc<Remote>,
+	login_name: String,
 	rcv_handle: Option<JoinHandle<()>>,
 	p_rcv: Option<Receiver<Packet>>,
 	last_cli_list: Vec<(ClientId, String)>,
@@ -88,6 +89,7 @@ impl NetHandler {
 
 		Ok(NetHandler {
 			remote: remote,
+			login_name: name.to_string(),
 			rcv_handle: None,
 			p_rcv: None,
 			last_cli_list: Vec::new(),
@@ -225,6 +227,11 @@ impl NetHandler {
 	pub fn request_client_list(&self) -> bool {
 		let p = Packet::RequestClientList;
 		self.remote.write_packet(&p)
+	}
+
+	/// The name of the client as seen on the server.
+	pub fn login_name(&self) -> String {
+		self.login_name.clone()
 	}
 
 	/// The last client list that has been received from the server. This should always

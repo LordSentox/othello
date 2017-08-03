@@ -34,6 +34,9 @@ pub enum Packet {
 	/// Request a game. On the server, "String" is the name of the requestee, on the client the name
 	/// of the one who has requested.
 	RequestGame(String),
+	/// Response to a game request. On the server, it is the name of the one this is aimed at,
+	/// on the client the one who has sent the response.
+	RequestGameResponse(String, bool),
 	/// Start a game with a fresh board. This is Server->Client only and the colour the client will
 	/// be controlling is sent.
 	StartGame(Piece)
