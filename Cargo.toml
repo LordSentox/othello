@@ -12,6 +12,7 @@ name = "client"
 path = "src/client.rs"
 
 [dependencies]
+bus = "*"
 sfml = "*"
 bincode = "*"
 lazy_static = "*"

@@ -75,7 +75,7 @@ impl Remote {
 
 	/// Shuts down the connection. After this it will be impossible to send
 	/// or read anything from the stream.
-	pub fn shutdown(&mut self) {
+	pub fn shutdown(&self) {
 		// Reading and sending will be seperately shut down, as to not
 		// disturb any operation that might still be in the process.
 		self.read.lock().unwrap().shutdown(Shutdown::Read).expect("Error while shutting down read thread.");
