@@ -17,3 +17,6 @@ black_piece = "data/black_piece.png"
 
 # shadow = "data/shadow_test.png"
 shadow = "data/shadow.png"
+
+white_score_colour = [255, 255, 255]
+black_score_colour = [0, 0, 0]
