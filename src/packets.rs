@@ -42,7 +42,11 @@ pub enum Packet {
 	RequestGameResponse(String, bool),
 	/// Start a game with a fresh board. This is Server->Client only and the colour the client will
 	/// be controlling is sent.
-	StartGame(Piece)
+	StartGame(Piece),
+	/// Message to or from another client. If it is in direction Server->Client, the ID of the client
+	/// that has sent the message is the id, in direction Client->Server it's the id of the client
+	/// it is directed at.
+	Message(ClientId, String)
 }
 
 impl Packet {
