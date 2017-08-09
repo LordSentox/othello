@@ -7,7 +7,7 @@ use std::collections::{HashMap, VecDeque};
 /// in a game.
 pub struct Master {
     nethandler: Arc<NetHandler>,
-    named_clients: HashMap<ClientId, String>,
+    named_clients: Mutex<HashMap<ClientId, String>>,
     packets: Arc<Mutex<VecDeque<(ClientId, Packet)>>>
 }
 
@@ -22,11 +22,84 @@ impl Master {
 
         Master {
             nethandler: nethandler,
-            named_clients: HashMap::new(),
+            named_clients: Mutex::new(HashMap::new()),
             packets: packets
         }
     }
 
-    pub fn handle_packets(&mut self) {
+    pub fn handle_packets(&self) {
+        loop {
+            let (client, packet) = match self.packets.lock().unwrap().pop_front() {
+                Some(cp) => cp,
+                None => break
+            };
+
+            match packet {
+                Packet::Disconnect => self.handle_disconnect(client),
+                Packet::Login(name) => self.handle_login(client, name),
+                Packet::Message(to, msg) => self.handle_message(client, to, msg),
+                _ => {}
+            }
+        }
+    }
+
+    fn handle_disconnect(&self, client: ClientId) {
+        let clients_lock = self.named_clients.lock().unwrap();
+
+        if !clients_lock.contains_key(&client) {
+            println!("Unnamed client disconnected. Id [{}]", client);
+        }
+
+        {
+            let name = clients_lock.get(&client).unwrap();
+            println!("'{}' disconnected. Id [{}]", name, client);
+        }
+
+        let mut clients_lock = clients_lock;
+        clients_lock.remove(&client);
+    }
+
+    fn handle_login(&self, client: ClientId, name: String) {
+        // If the name is already in use, the login fails.
+        let clients_lock = self.named_clients.lock().unwrap();
+
+        for taken in clients_lock.values() {
+            if &name == taken {
+                self.nethandler.send(client, &Packet::LoginDeny("Name already in use.".to_string()));
+            }
+        }
+
+        // The name is not taken yet. Add the client to the named_clients and return the message of
+        // success to the client.
+        if self.nethandler.send(client, &Packet::LoginAccept) {
+            let mut clients_lock = clients_lock;
+            clients_lock.insert(client, name);
+        }
+        else {
+            println!("Client [{}] tried to login as [{}] (available), but the accept message could not be sent.", client, name);
+        }
+    }
+
+    fn handle_message(&self, from: ClientId, to: ClientId, message: String) {
+        // At the moment, the message will simply be passed on unchecked. Later there will probably
+        // be things like SPAM-Filter etc.
+        self.nethandler.send(to, &Packet::Message(from, message));
+    }
+
+    pub fn get_login_name(&self, client: ClientId) -> Option<String> {
+        match self.named_clients.lock().unwrap().get(&client) {
+            Some(ref name) => Some(name.to_string()), // XXX: Why?!? to_string() ? On a string?
+            None => None
+        }
+    }
+
+    pub fn get_id(&self, login_name: &str) -> Option<ClientId> {
+        for (id, name) in &*self.named_clients.lock().unwrap() {
+            if name.as_str() == login_name {
+                return Some(*id)
+            }
+        }
+
+        None
     }
 }

@@ -32,11 +32,9 @@ impl NetClient {
                 let packet = match remote_clone.read_packet() {
                     Ok(p) => p,
                     Err(PacketReadError::Closed) => {
-                        // The client has disconnected. Remove it from the client map.
-                        nethandler.clients_mut().remove(&id);
-
-                        println!("Client [{}] disconnected.", id);
-                        break; // End the receiving thread.
+                        // Create a disconnection packet. Then the other parts can decide how this
+                        // will be handled.
+                        Packet::Disconnect
                     },
                     Err(err) => {
                         // An error occured. Ignore this packet.
@@ -46,7 +44,7 @@ impl NetClient {
                 };
 
 				// Send the packet to all handlers that are subscribed specifically to this client.
-				for s in *packets_clone.read().unwrap() {
+				for s in &*packets_clone.read().unwrap() {
 					if let Some(s) = s.upgrade() {
 						s.lock().unwrap().push_back(packet.clone());
 					}
@@ -54,13 +52,19 @@ impl NetClient {
 
 				// Check if any of the receivers for the clients packets have hung up.
 				// TODO: Same as the push_packet function in the NetHandler.
-				if let Ok(packets) = packets_clone.try_write() {
-					packets.retain(|&s| {s.upgrade().is_some()});
+				if let Ok(mut packets) = packets_clone.try_write() {
+					packets.retain(|ref s| {s.upgrade().is_some()});
 				}
 
 				// Send the packet to the global packets VecDeque, so it can be handled by everyone
 				// that is globally subscribed.
-				nethandler.push_packet(id, packet);
+				nethandler.push_packet(id, packet.clone());
+
+                // If the Disconnection packet has been created, there will no longer be anything
+                // to do, so the client will be stopped.
+                if let Packet::Disconnect = packet {
+                    break;
+                }
             }
         });
 

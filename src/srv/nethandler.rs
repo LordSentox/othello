@@ -89,7 +89,7 @@ impl NetHandler {
                 let remote = match Remote::new(stream) {
                     Ok(r) => r,
                     Err(err) => {
-                        println!("Couldn't create remote for the client. Dropping.");
+                        println!("Couldn't create remote for the client. Dropping. {:?}", err);
                         continue;
                     }
                 };
@@ -102,6 +102,9 @@ impl NetHandler {
                 self_clone.clients_mut().insert(last_id, Arc::new(client));
 
                 println!("Client connected. ID: {}", last_id);
+
+				// Let the client know which id it will be referred to after this.
+				self_clone.send(last_id, &Packet::ConnectSuccess(last_id));
             }
         });
 
@@ -180,7 +183,7 @@ impl NetHandler {
 		assert!(self.has_client(id));
 
 		// Add the packet to all VecDeques currently registered.
-		for s in *self.packets.read().unwrap() {
+		for s in &*self.packets.read().unwrap() {
 			if let Some(s) = s.upgrade() {
 				s.lock().unwrap().push_back((id, packet.clone()));
 			}
@@ -189,8 +192,13 @@ impl NetHandler {
 		// If the packets can be written to, remove all the dead Weak pointers. This has to just
 		// work sometimes, but it could still theoretically be starved, so:
 		// TODO: Check, if this is starved and create a dedicated function if so.
-		if let Ok(packets) = self.packets.try_write() {
-			packets.retain(|&s| {s.upgrade().is_some()});
+		if let Ok(mut packets) = self.packets.try_write() {
+			packets.retain(|ref s| {s.upgrade().is_some()});
+		}
+
+		// Check if the packet was a disconnect packet and remove the client from the register if so.
+		if let Packet::Disconnect = packet {
+			self.clients.write().unwrap().remove(&id);
 		}
 	}
 }

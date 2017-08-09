@@ -23,13 +23,19 @@ pub enum PacketReadError {
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub enum Packet {
+	/// Packet to let the client know which id it will have. This is the first packet sent to the
+	/// client by the server when the connection has been established.
+	ConnectSuccess(ClientId),
+	/// This packet is never actually sent over the network, but it is used internally to handle
+	/// disconnects a little more gracefully and easily.
+	Disconnect,
 	/// Login into the server. The server will then answer with a LoginResponse.
 	Login(String),
 	/// Positive login response to a client. The argument is the client_id the
 	/// server will use to identify the client.
-	LoginAccept(ClientId),
-	/// Negative login response to a client.
-	LoginDeny,
+	LoginAccept,
+	/// Negative login response to a client. The argument is the reason of the denial.
+	LoginDeny(String),
 	/// Request the updated client list manually (Client->Server only)
 	RequestClientList,
 	/// The complete list of all client ids and names in "Vec<(u64, String)>" (Server->Client only)
