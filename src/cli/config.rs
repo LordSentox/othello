@@ -31,7 +31,9 @@ pub struct Graphics {
 	pub square_size: Option<u16>,
 	pub white_piece: String,
 	pub black_piece: String,
-	pub shadow: Option<String>
+	pub shadow: Option<String>,
+	pub white_score_colour: Vec<u8>,
+	pub black_score_colour: Vec<u8>
 }
 
 // Holds the client configuration.

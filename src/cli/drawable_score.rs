@@ -4,6 +4,7 @@ use sfml::system::Vector2f;
 
 use board::{Piece, Board};
 use score::Score;
+use config::CONFIG;
 
 pub struct DrawableScore {
 	bounds: Rect<u32>,
@@ -31,9 +32,8 @@ impl Drawable for DrawableScore {
 		white_bar.set_position2f(self.bounds.left as f32, self.bounds.top as f32);
 		black_bar.set_position(&white_bar.position());
 
-		white_bar.set_fill_color(&Color::white());
-		black_bar.set_fill_color(&Color::black());
-
+		white_bar.set_fill_color(&Color::rgb(CONFIG.graphics.white_score_colour[0], CONFIG.graphics.white_score_colour[1], CONFIG.graphics.white_score_colour[2]));
+		black_bar.set_fill_color(&Color::rgb(CONFIG.graphics.black_score_colour[0], CONFIG.graphics.black_score_colour[1], CONFIG.graphics.black_score_colour[2]));
 		// The white bar is the only one that gets resized. It will simply be
 		// rendered over the black bar.
 		target.draw(&black_bar);

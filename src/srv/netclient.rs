@@ -1,16 +1,16 @@
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Weak, Mutex, RwLock};
 use std::sync::mpsc::{self, Sender, Receiver};
 use remote::Remote;
 use packets::*;
 use std::thread::{self, JoinHandle};
 use super::nethandler::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 /// Connection to a client on the Network.
 pub struct NetClient {
     id: ClientId,
     remote: Arc<Remote>,
-	packets: Receiver<Packet>, // Receiver of all the packets of this client.
+	packets: ArcRw<Vec<Weak<Mutex<VecDeque<Packet>>>>>, // Receiver of all the packets of this client.
     pt_handle: Option<JoinHandle<()>> // JoinHandle of the packet thread.
 }
 
@@ -19,14 +19,13 @@ impl NetClient {
     /// id is the clients id on the NetHandler.
     /// Remote is the socket the client will receive packets from and send packets to.
     /// global_bus is the bus, where all packets of all clients will be sent to.
-    pub (super) fn from_remote(client_map: ArcRw<HashMap<ClientId, Arc<NetClient>>>, id: ClientId, remote: Remote, packet_tx: Sender<Packet>) -> NetClient {
+    pub (super) fn start(nethandler: Arc<NetHandler>, id: ClientId, remote: Remote) -> NetClient {
         let remote = Arc::new(remote);
-
-		// Create a personal channel for all packets that will be received by this client.
-		let (sender, receiver) = mpsc::channel();
+		let packets = Arc::new(RwLock::new(Vec::new()));
 
         // Start the packet receiving thread.
         let remote_clone = remote.clone();
+		let packets_clone: ArcRw<Vec<Weak<Mutex<VecDeque<Packet>>>>> = packets.clone();
         let pt_handle = thread::spawn(move || {
             loop {
 				// Read the packet from the remote of this client.
@@ -34,7 +33,7 @@ impl NetClient {
                     Ok(p) => p,
                     Err(PacketReadError::Closed) => {
                         // The client has disconnected. Remove it from the client map.
-                        client_map.write().unwrap().remove(&id);
+                        nethandler.clients_mut().remove(&id);
 
                         println!("Client [{}] disconnected.", id);
                         break; // End the receiving thread.
@@ -46,21 +45,29 @@ impl NetClient {
                     }
                 };
 
-				// Send the packet to the local subscribers of this client, then to the global
-                // subscribers.
-				match packet_tx.send(packet.clone()) {
-					Ok(_) => {},
-					Err(_) => println!("[WARNING] Packet received on client thread that could not be distributed.")
+				// Send the packet to all handlers that are subscribed specifically to this client.
+				for s in *packets_clone.read().unwrap() {
+					if let Some(s) = s.upgrade() {
+						s.lock().unwrap().push_back(packet.clone());
+					}
 				}
 
-				sender.send(packet).unwrap();
+				// Check if any of the receivers for the clients packets have hung up.
+				// TODO: Same as the push_packet function in the NetHandler.
+				if let Ok(packets) = packets_clone.try_write() {
+					packets.retain(|&s| {s.upgrade().is_some()});
+				}
+
+				// Send the packet to the global packets VecDeque, so it can be handled by everyone
+				// that is globally subscribed.
+				nethandler.push_packet(id, packet);
             }
         });
 
         NetClient {
             id: id,
             remote: remote,
-			packets: receiver,
+			packets: packets,
             pt_handle: Some(pt_handle)
         }
     }
@@ -98,7 +105,10 @@ impl NetClient {
 	pub (super) fn send(&self, p: &Packet) -> bool {
 		self.remote.write_packet(&p)
 	}
-}
 
-unsafe impl Send for NetClient {}
-unsafe impl Sync for NetClient {}
+	/// Subscribe to this client and receive all the packets from them. They are then saved into the packets-
+	/// VecDeque provided.
+	pub fn subscribe(&self, packets: Weak<Mutex<VecDeque<Packet>>>) {
+		self.packets.write().unwrap().push(packets)
+	}
+}

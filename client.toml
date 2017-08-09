@@ -9,3 +9,5 @@ board = "data/board_test.png"
 white_piece = "data/white_piece_test.png"
 black_piece = "data/black_piece_test.png"
 shadow = "data/shadow_test.png"
+white_score_colour = [244, 244, 244]
+black_score_colour = [0, 0, 0]
