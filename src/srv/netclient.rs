@@ -115,4 +115,9 @@ impl NetClient {
 	pub fn subscribe(&self, packets: Weak<Mutex<VecDeque<Packet>>>) {
 		self.packets.write().unwrap().push(packets)
 	}
+
+    /// The internal id of the client used by the NetHandler.
+    pub fn id(&self) -> ClientId {
+        self.id
+    }
 }

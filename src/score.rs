@@ -25,8 +25,8 @@ impl Score {
 
 		for square in board.squares().iter().flat_map(|v| {v.iter()}) {
 			match square {
-				&Some(Piece::BLACK) => self.black += 1,
-				&Some(Piece::WHITE) => self.white += 1,
+				&Some(Piece::Black) => self.black += 1,
+				&Some(Piece::White) => self.white += 1,
 				_ => {}
 			}
 		}

@@ -52,7 +52,7 @@ fn main() {
 	let mut score = DrawableScore::new(Score::new(&board), score_size);
 
 	// The player to set the first stone is black.
-	let mut next_piece = Piece::BLACK;
+	let mut next_piece = Piece::Black;
 
 	loop {
 		for event in window.events() {
@@ -69,8 +69,8 @@ fn main() {
 				}
 				else if button == Button::Right {
 					match next_piece {
-						Piece::BLACK => println!("Black has passed"),
-						Piece::WHITE => println!("White has passed"),
+						Piece::Black => println!("Black has passed"),
+						Piece::White => println!("White has passed"),
 					}
 					next_piece = next_piece.opposite();
 				}

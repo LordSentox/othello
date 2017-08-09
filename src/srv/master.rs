@@ -57,6 +57,9 @@ impl Master {
 
         let mut clients_lock = clients_lock;
         clients_lock.remove(&client);
+
+        // Make sure the clients have the updated client-list.
+        self.push_client_list();
     }
 
     fn handle_login(&self, client: ClientId, name: String) {
@@ -74,10 +77,23 @@ impl Master {
         if self.nethandler.send(client, &Packet::LoginAccept) {
             let mut clients_lock = clients_lock;
             clients_lock.insert(client, name);
+
+            // Make sure the clients have the updated list.
+            self.push_client_list();
         }
         else {
             println!("Client [{}] tried to login as [{}] (available), but the accept message could not be sent.", client, name);
         }
+    }
+
+    /// Whenever a client logs in, changes name or is disconnected, this can be called to update
+    /// the client list on all clients, letting them know the current state. This way it is
+    /// assured the client always has the correct information without always having to ask first.
+    pub fn push_client_list(&self) {
+        let clients_lock = self.named_clients.lock().unwrap();
+        let clients_vec: Vec<(ClientId, String)> = clients_lock.clone().into_iter().collect();
+
+        self.nethandler.broadcast(&Packet::ClientList(clients_vec));
     }
 
     fn handle_message(&self, from: ClientId, to: ClientId, message: String) {

@@ -134,10 +134,10 @@ impl Drawable for DrawableBoard {
 			for y in 0..8 {
 				// Check if a piece is at this position and create it.
 				let mut sprite = match self.squares()[x][y] {
-					Some(Piece::WHITE) => {
+					Some(Piece::White) => {
 						Sprite::with_texture(&self.white_piece_tex)
 					},
-					Some(Piece::BLACK) => {
+					Some(Piece::Black) => {
 						Sprite::with_texture(&self.black_piece_tex)
 					},
 					None => continue

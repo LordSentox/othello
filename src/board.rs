@@ -1,16 +1,16 @@
 // A piece that might be placed on the board.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Piece {
-	BLACK,
-	WHITE
+	Black,
+	White
 }
 
 impl Piece {
 	// Return the complementary piece of the one this is called on.
 	pub fn opposite(&self) -> Piece {
 		match self {
-			&Piece::BLACK => Piece::WHITE,
-			&Piece::WHITE => Piece::BLACK
+			&Piece::Black => Piece::White,
+			&Piece::White => Piece::Black
 		}
 	}
 }
@@ -26,14 +26,14 @@ impl Board {
 	pub fn new() -> Board {
 		// Program in the starting information.
 		let mut squares: Vec<Vec<Option<Piece>>> = vec![vec![None; 8]; 8];
-		squares[3][3] = Some(Piece::WHITE);
-		squares[4][4] = Some(Piece::WHITE);
-		squares[3][4] = Some(Piece::BLACK);
-		squares[4][3] = Some(Piece::BLACK);
+		squares[3][3] = Some(Piece::White);
+		squares[4][4] = Some(Piece::White);
+		squares[3][4] = Some(Piece::Black);
+		squares[4][3] = Some(Piece::Black);
 
 		Board {
 			squares: squares,
-			turn: Piece::BLACK
+			turn: Piece::Black
 		}
 	}
 
@@ -127,6 +127,10 @@ impl Board {
 		true
 	}
 
+	pub fn turn(&self) -> Piece {
+		self.turn
+	}
+
 	pub fn squares(&self) -> &Vec<Vec<Option<Piece>>> {
 		&self.squares
 	}
@@ -139,8 +143,8 @@ impl Board {
 		for y in 0..8 {
 			for x in 0..8 {
 				match self.squares[x][y] {
-					Some(Piece::WHITE) => print!("W"),
-					Some(Piece::BLACK) => print!("B"),
+					Some(Piece::White) => print!("W"),
+					Some(Piece::Black) => print!("B"),
 					None => print!("-")
 				};
 			}
