@@ -19,7 +19,5 @@ fn main() {
 
 	let port: u16 = args[1].parse().expect("Input formatted incorrectly. Could not read port.");
 
-	let _ = NetHandler::new(port).unwrap();
-
 	loop {}
 }

@@ -21,12 +21,15 @@ pub enum PacketReadError {
 	Closed
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub enum Packet {
-	/// Request to change the name of the sender internally to "String" (Client->Server only)
-	ChangeNameRequest(String),
-	/// Answer to a name-change. True, if the clients new name was accepted by the server (Server->Client only)
-	ChangeNameResponse(bool),
+	/// Login into the server. The server will then answer with a LoginResponse.
+	Login(String),
+	/// Positive login response to a client. The argument is the client_id the
+	/// server will use to identify the client.
+	LoginAccept(ClientId),
+	/// Negative login response to a client.
+	LoginDeny,
 	/// Request the updated client list manually (Client->Server only)
 	RequestClientList,
 	/// The complete list of all client ids and names in "Vec<(u64, String)>" (Server->Client only)
@@ -39,7 +42,11 @@ pub enum Packet {
 	RequestGameResponse(String, bool),
 	/// Start a game with a fresh board. This is Server->Client only and the colour the client will
 	/// be controlling is sent.
-	StartGame(Piece)
+	StartGame(Piece),
+	/// Message to or from another client. If it is in direction Server->Client, the ID of the client
+	/// that has sent the message is the id, in direction Client->Server it's the id of the client
+	/// it is directed at.
+	Message(ClientId, String)
 }
 
 impl Packet {
