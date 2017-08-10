@@ -1,5 +1,4 @@
-use std::sync::{Arc, mpsc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak};
-use std::sync::mpsc::{Sender, Receiver};
+use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak};
 use packets::*;
 use remote::Remote;
 use super::netclient::NetClient;
@@ -7,7 +6,6 @@ use std::thread;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener};
 use std::collections::{HashMap, VecDeque};
 use std::io::Error as IOError;
-use std::sync::atomic::{AtomicBool, Ordering};
 
 pub type ArcRw<T> = Arc<RwLock<T>>;
 pub const SERVER_ID: ClientId = 0;
@@ -122,11 +120,12 @@ impl NetHandler {
 		let mut one_failed = false;
         let clients = self.clients.read().unwrap();
 		for (ref id, ref client) in &*clients {
-            let succ = client.send(&packet);
-            println!("Broadcast failed for client [{}]", id);
-			one_failed |= !succ;
+            if !client.send(&packet) {
+	            println!("Broadcasting {:?} failed for client [{}]", packet, id);
+				one_failed = true;
+			}
 		}
-		one_failed
+		!one_failed
     }
 
     /// Sends a packet to the client with the corresponding client id and returns true, if the

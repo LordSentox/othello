@@ -60,6 +60,8 @@ impl NetClient {
 				// that is globally subscribed.
 				nethandler.push_packet(id, packet.clone());
 
+				println!("Packet received [{}]: {:?}", id, packet.clone());
+
                 // If the Disconnection packet has been created, there will no longer be anything
                 // to do, so the client will be stopped.
                 if let Packet::Disconnect = packet {

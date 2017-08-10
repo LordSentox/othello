@@ -21,6 +21,7 @@ use sfml::window::mouse::Button;
 use sfml::graphics::{Color, Rect, RenderTarget, RenderWindow};
 
 use cli::*;
+use packets::Packet;
 
 const SCORE_HEIGHT: u32 = 20;
 
@@ -28,11 +29,11 @@ fn main() {
 	// Connect to a server
 	println!("Welcome to othello.");
 
-	// Create the connection to the server. Later, this could be read from a
-	// config file, with a little more galant error checking as well.
-	// TODO: uncomment this.
-	//let mut nethandler = NetHandler::new((CONFIG.network.server_ip.as_str(), CONFIG.network.server_port), &CONFIG.network.login_name).unwrap();
-	//nethandler.start_receiving();
+	// Create the connection to the server.
+	// TODO: Handle the errors a little bit more graceful.
+	let nethandler = NetHandler::connect((CONFIG.network.server_ip.as_str(), CONFIG.network.server_port), &CONFIG.network.login_name).expect("Could not connect to the server.");
+
+	nethandler.send(&Packet::Message(0, "Hello World".to_string()));
 
 	// Create a test board.
 	let mut board = DrawableBoard::new(Board::new()).unwrap();

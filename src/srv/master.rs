@@ -69,6 +69,7 @@ impl Master {
         for taken in clients_lock.values() {
             if &name == taken {
                 self.nethandler.send(client, &Packet::LoginDeny("Name already in use.".to_string()));
+				return;
             }
         }
 
@@ -76,10 +77,14 @@ impl Master {
         // success to the client.
         if self.nethandler.send(client, &Packet::LoginAccept) {
             let mut clients_lock = clients_lock;
-            clients_lock.insert(client, name);
+            clients_lock.insert(client, name.clone());
+
+			drop(clients_lock);
 
             // Make sure the clients have the updated list.
             self.push_client_list();
+
+			println!("Client [{}] logged in as '{}'", client, name);
         }
         else {
             println!("Client [{}] tried to login as [{}] (available), but the accept message could not be sent.", client, name);

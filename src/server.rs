@@ -3,13 +3,14 @@ extern crate serde;
 extern crate serde_derive;
 extern crate bincode;
 extern crate toml;
+extern crate lazy_static;
 
 pub mod board;
 pub mod packets;
 pub mod remote;
 pub mod srv;
 
-use srv::NetHandler;
+use srv::{NetHandler, Master};
 
 fn main() {
 	let args: Vec<String> = std::env::args().collect();
@@ -19,5 +20,11 @@ fn main() {
 
 	let port: u16 = args[1].parse().expect("Input formatted incorrectly. Could not read port.");
 
-	loop {}
+	let nethandler = NetHandler::start_listen(port).expect("Could not start NetHandler.");
+
+	let master = Master::new(nethandler.clone());
+
+	loop {
+		master.handle_packets();
+	}
 }
