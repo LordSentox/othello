@@ -10,7 +10,7 @@ pub mod packets;
 pub mod remote;
 pub mod srv;
 
-use srv::{NetHandler, Master};
+use srv::{NetHandler, GameHandler, Master};
 
 fn main() {
 	let args: Vec<String> = std::env::args().collect();
@@ -22,9 +22,11 @@ fn main() {
 
 	let nethandler = NetHandler::start_listen(port).expect("Could not start NetHandler.");
 
-	let master = Master::new(nethandler.clone());
+	let mut master = Master::new(nethandler.clone());
+	let mut gamehandler = GameHandler::new(nethandler.clone());
 
 	loop {
 		master.handle_packets();
+		gamehandler.handle_packets();
 	}
 }

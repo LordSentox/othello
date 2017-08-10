@@ -7,7 +7,7 @@ use std::collections::{HashMap, VecDeque};
 /// in a game.
 pub struct Master {
     nethandler: Arc<NetHandler>,
-    named_clients: Mutex<HashMap<ClientId, String>>,
+    named_clients: HashMap<ClientId, String>,
     packets: Arc<Mutex<VecDeque<(ClientId, Packet)>>>
 }
 
@@ -22,12 +22,12 @@ impl Master {
 
         Master {
             nethandler: nethandler,
-            named_clients: Mutex::new(HashMap::new()),
+            named_clients: HashMap::new(),
             packets: packets
         }
     }
 
-    pub fn handle_packets(&self) {
+    pub fn handle_packets(&mut self) {
         loop {
             let (client, packet) = match self.packets.lock().unwrap().pop_front() {
                 Some(cp) => cp,
@@ -43,30 +43,25 @@ impl Master {
         }
     }
 
-    fn handle_disconnect(&self, client: ClientId) {
-        let clients_lock = self.named_clients.lock().unwrap();
-
-        if !clients_lock.contains_key(&client) {
+    fn handle_disconnect(&mut self, client: ClientId) {
+        if !self.named_clients.contains_key(&client) {
             println!("Unnamed client disconnected. Id [{}]", client);
         }
 
         {
-            let name = clients_lock.get(&client).unwrap();
+            let name = self.named_clients.get(&client).unwrap();
             println!("'{}' disconnected. Id [{}]", name, client);
         }
 
-        let mut clients_lock = clients_lock;
-        clients_lock.remove(&client);
+        self.named_clients.remove(&client);
 
         // Make sure the clients have the updated client-list.
         self.push_client_list();
     }
 
-    fn handle_login(&self, client: ClientId, name: String) {
+    fn handle_login(&mut self, client: ClientId, name: String) {
         // If the name is already in use, the login fails.
-        let clients_lock = self.named_clients.lock().unwrap();
-
-        for taken in clients_lock.values() {
+        for taken in self.named_clients.values() {
             if &name == taken {
                 self.nethandler.send(client, &Packet::LoginDeny("Name already in use.".to_string()));
 				return;
@@ -76,10 +71,7 @@ impl Master {
         // The name is not taken yet. Add the client to the named_clients and return the message of
         // success to the client.
         if self.nethandler.send(client, &Packet::LoginAccept) {
-            let mut clients_lock = clients_lock;
-            clients_lock.insert(client, name.clone());
-
-			drop(clients_lock);
+            self.named_clients.insert(client, name.clone());
 
             // Make sure the clients have the updated list.
             self.push_client_list();
@@ -95,8 +87,7 @@ impl Master {
     /// the client list on all clients, letting them know the current state. This way it is
     /// assured the client always has the correct information without always having to ask first.
     pub fn push_client_list(&self) {
-        let clients_lock = self.named_clients.lock().unwrap();
-        let clients_vec: Vec<(ClientId, String)> = clients_lock.clone().into_iter().collect();
+        let clients_vec: Vec<(ClientId, String)> = self.named_clients.clone().into_iter().collect();
 
         self.nethandler.broadcast(&Packet::ClientList(clients_vec));
     }
@@ -108,14 +99,14 @@ impl Master {
     }
 
     pub fn get_login_name(&self, client: ClientId) -> Option<String> {
-        match self.named_clients.lock().unwrap().get(&client) {
+        match self.named_clients.get(&client) {
             Some(ref name) => Some(name.to_string()), // XXX: Why?!? to_string() ? On a string?
             None => None
         }
     }
 
     pub fn get_id(&self, login_name: &str) -> Option<ClientId> {
-        for (id, name) in &*self.named_clients.lock().unwrap() {
+        for (id, name) in &self.named_clients {
             if name.as_str() == login_name {
                 return Some(*id)
             }
