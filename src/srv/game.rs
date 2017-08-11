@@ -79,6 +79,8 @@ impl Game {
 			};
 
 			self.handle_packet(packet, Piece::White);
+
+			thread::sleep_ms(50);
 		}
     }
 

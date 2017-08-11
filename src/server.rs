@@ -35,6 +35,6 @@ fn main() {
 		// TODO: The thread really should just be unparked whenever a packet comes
 		// in, to waste neither time, nor resources, but this will do for now to
 		// stop the excessive resource grabbing.
-		thread::sleep(Duration::from_millis(50));
+		thread::sleep(Duration::from_millis(500));
 	}
 }

@@ -2,7 +2,7 @@ pub mod config;
 pub use self::config::*;
 
 pub mod drawable_board;
-pub use self::drawable_board::DrawableBoard;
+pub use self::drawable_board::*;
 
 pub mod drawable_score;
 pub use self::drawable_score::*;

@@ -6,6 +6,8 @@ use board::{Piece, Board};
 use score::Score;
 use config::CONFIG;
 
+pub const SCORE_HEIGHT: u32 = 20;
+
 pub struct DrawableScore {
 	bounds: Rect<u32>,
 	inner: Score

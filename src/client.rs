@@ -13,7 +13,11 @@ pub mod packets;
 pub mod remote;
 pub mod score;
 
-use std::io;
+use std::io::{self, Write};
+use std::thread;
+use std::sync::mpsc::{self, Sender, Receiver};
+use std::sync::{Arc, Mutex};
+use std::collections::VecDeque;
 
 use board::{Board, Piece};
 use score::{Score};
@@ -25,7 +29,31 @@ use sfml::graphics::{Color, Rect, RenderTarget, RenderWindow};
 use cli::*;
 use packets::Packet;
 
-const SCORE_HEIGHT: u32 = 20;
+/// Reads the user input in a new thread. If it cannot be interpreted on the spot,
+/// it will be sent to the receiver.
+fn process_input() -> Receiver<String> {
+	let (sender, receiver) = mpsc::channel();
+
+	thread::spawn(move || {
+		loop {
+			let mut cmd = String::new();
+			if io::stdin().read_line(&mut cmd).is_err() {
+				println!("Could not read command. Please try again.");
+			}
+
+			let cmd = cmd.trim_right_matches("\n").to_string();
+
+			if cmd == "help" {
+				println!("help -- show this message.");
+			}
+			else {
+				sender.send(cmd);
+			}
+		}
+	});
+
+	receiver
+}
 
 fn main() {
 	println!("Welcome to othello.");
@@ -34,63 +62,28 @@ fn main() {
 		&Some(ref name) => name.clone(),
 		&None => {
 			print!("Login: ");
+			if io::stdout().flush().is_err() { println!(""); }
 			let mut login_name = String::new();
 			io::stdin().read_line(&mut login_name).expect("Could not read login name. Aborting. {}");
 
-			login_name
+			login_name.trim_right_matches("\n").to_string()
 		}
 	};
 
 	// Create the connection to the server.
-	// TODO: Handle the errors a little bit more graceful.
+	// TODO: Handle the errors a little bit more gracefully.
 	let nethandler = NetHandler::connect((CONFIG.network.server_ip.as_str(), CONFIG.network.server_port), &login_name).expect("Could not connect to the server.");
+	let packets = Arc::new(Mutex::new(VecDeque::new()));
+	nethandler.subscribe(Arc::downgrade(&packets));
 
-	// Create a test board.
-	let mut board = DrawableBoard::new(Board::new()).unwrap();
+	let cmd_rcv = process_input();
 
-	// Create the window of the application
-	let mut window = RenderWindow::new(VideoMode::new(board.size(), board.size() + SCORE_HEIGHT, 32), "SFML Othello", style::CLOSE, &ContextSettings::default()).unwrap();
-	window.set_framerate_limit(30);
-
-
-	// Create the Score Bar
-	let score_size = Rect::<u32> {
-		left: 0,
-		top: board.size(),
-		width: board.size(),
-		height: SCORE_HEIGHT
-	};
-	let mut score = DrawableScore::new(Score::new(&board), score_size);
-
-	// The player to set the first stone is black.
-	let mut next_piece = Piece::Black;
-
+	// All the games the client is currently engaged in.
+	let mut games: Vec<Game> = Vec::new();
 	loop {
-		for event in window.events() {
-			if let Event::Closed = event {
-				return;
-			}
-			else if let Event::MouseButtonPressed {button, x, y} = event {
-				if button == Button::Left {
-					let pos = board.piece_index(x as u32, y as u32);
-					if board.place(pos, next_piece) {
-						score.update_score(&board);
-						next_piece = next_piece.opposite();
-					}
-				}
-				else if button == Button::Right {
-					match next_piece {
-						Piece::Black => println!("Black has passed"),
-						Piece::White => println!("White has passed"),
-					}
-					next_piece = next_piece.opposite();
-				}
-			}
-		}
-
-		window.clear(&Color::rgb(100, 200, 100));
-		window.draw(&board);
-		window.draw(&score);
-		window.display();
+		// If the client is currently not running any games, the thread will block
+		// and wait for the next command. Otherwise this is obviously not possible,
+		// so the input is non-blocking.
+		// TODO
 	}
 }
