@@ -49,7 +49,7 @@ impl NetHandler {
     pub fn start_listen(port: u16) -> Result<Arc<NetHandler>, Error> {
 		// Create a new listener on the local address with the specified port.
 		let listener = match TcpListener::bind(SocketAddr::V4(SocketAddrV4::new(
-			Ipv4Addr::new(127, 0, 0, 1), port))) {
+			Ipv4Addr::new(0, 0, 0, 0), port))) {
 				Ok(listener) => listener,
 				Err(err) => return Err(Error::SockErr(err))
 		};
