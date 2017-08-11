@@ -10,6 +10,9 @@ pub mod packets;
 pub mod remote;
 pub mod srv;
 
+use std::thread;
+use std::time::Duration;
+
 use srv::{NetHandler, GameHandler, Master};
 
 fn main() {
@@ -28,5 +31,10 @@ fn main() {
 	loop {
 		master.handle_packets();
 		gamehandler.handle_packets();
+
+		// TODO: The thread really should just be unparked whenever a packet comes
+		// in, to waste neither time, nor resources, but this will do for now to
+		// stop the excessive resource grabbing.
+		thread::sleep(Duration::from_millis(50));
 	}
 }
