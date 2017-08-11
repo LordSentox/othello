@@ -61,10 +61,80 @@ impl Game {
     }
 
     fn handle_packets(&self) {
-        unimplemented!();
+		// Handle the packets of the black client.
+		loop {
+			let packet = match self.black_packets.lock().unwrap().pop_front() {
+				Some(p) => p,
+				None => break
+			};
+
+			self.handle_packet(packet, Piece::Black);
+		}
+
+		// Handle the packets of the white client.
+		loop {
+			let packet = match self.white_packets.lock().unwrap().pop_front() {
+				Some(p) => p,
+				None => break
+			};
+
+			self.handle_packet(packet, Piece::White);
+		}
     }
 
+	fn handle_packet(&self, packet: Packet, piece: Piece) {
+		match packet {
+			Packet::PlacePiece(opponent_id, x, y) => {
+				let (player, opponent) = match self.player_opponent(piece) {
+					Some(po) => po,
+					None => return // One of the players has disconnected.
+				};
+
+				// Since the Game gets all packets from the client in question, the opponent might
+				// not be the one played in this game. The packet can then be ignored.
+				if opponent_id != opponent.id() {
+					return;
+				}
+
+				// The stone can now be tried to set on the board, to check if it is a valid move.
+				if self.board.lock().unwrap().place((x, y), piece) {
+					// Inform the opponent of the move.
+					if !opponent.send(&Packet::PlacePiece(player.id(), x, y)) {
+						panic!("Could not send packet to opponent, leaving board in illegal state.");
+					}
+				}
+			},
+			_ => {}
+		}
+	}
+
+	/// Tries to upgrade both the players and return them. The first NetClient returned is the
+	/// one corresponding to the piece, the other is the opponent.
+	fn player_opponent(&self, piece: Piece) -> Option<(Arc<NetClient>, Arc<NetClient>)> {
+		let player = match self.get_player(piece).upgrade() {
+			Some(p) => p,
+			None => return None
+		};
+
+		let opponent = match self.get_player(piece.opposite()).upgrade() {
+			Some(p) => p,
+			None => return None
+		};
+
+		Some((player, opponent))
+	}
+
+	pub fn get_player(&self, piece: Piece) -> Weak<NetClient> {
+		match piece {
+			Piece::Black => self.black.clone(),
+			Piece::White => self.white.clone()
+		}
+	}
+
     pub fn is_running(&self) -> bool {
-        unimplemented!();
+		// TODO: This should check if the clients may have abandoned the game or the game is over.
+
+		// Check that both players are still connected.
+		self.white.upgrade().is_some() && self.black.upgrade().is_some()
     }
 }

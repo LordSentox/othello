@@ -5,7 +5,6 @@ use std::collections::{HashSet, VecDeque};
 
 pub struct GameHandler {
     nethandler: Arc<NetHandler>,
-    master: Arc<Master>,
     games: Vec<Weak<Game>>,
     /// All pending requests the first id is the requester, the second the requestee who has not
     /// yet answered.
@@ -14,7 +13,7 @@ pub struct GameHandler {
 }
 
 impl GameHandler {
-    pub fn new(nethandler: Arc<NetHandler>, master: Arc<Master>) -> GameHandler {
+    pub fn new(nethandler: Arc<NetHandler>) -> GameHandler {
         // Subscribe to the NetHandler, then return the GameHandler with an empty games list, since
         // naturally nothing has been requested yet.
         let packets = Arc::new(Mutex::new(VecDeque::new()));
@@ -22,7 +21,6 @@ impl GameHandler {
 
         GameHandler {
             nethandler: nethandler,
-            master: master,
             games: Vec::new(),
             pending: HashSet::new(),
             packets: packets
@@ -39,17 +37,21 @@ impl GameHandler {
             match packet {
                 Packet::Disconnect => self.handle_disconnect(client),
                 Packet::RequestGame(to) => self.handle_game_request(client, to),
-                Packet::RequestGameResponse(to, answer) => self.handle_game_request_response(client, to, answer),
+                Packet::DenyGame(to) => self.handle_deny_game(client, to),
                 _ => {}
             }
         }
+
+		// Check for games that are no longer running, to prevent memory leakage in form of the
+		// Games-Vector just groing with long dead games.
+		self.games.retain(|ref game| { game.upgrade().is_some() });
     }
 
     fn handle_disconnect(&mut self, client: ClientId) {
         // All game requests to the client will be denied.
         for &(from, to) in &self.pending {
             if to == client {
-                self.nethandler.send(from, &Packet::RequestGameResponse(to, false));
+                self.nethandler.send(from, &Packet::DenyGame(to));
             }
         }
 
@@ -73,8 +75,15 @@ impl GameHandler {
         }
     }
 
-    fn handle_game_request_response(&mut self, from: ClientId, to: ClientId, answer: bool) {
-        unimplemented!();
+    fn handle_deny_game(&mut self, from: ClientId, to: ClientId) {
+		if !self.pending.remove(&(to, from)) {
+			// There was no request, so there is nothing to deny.
+			println!("[WARNING] Blocked DenyGame packet, since there has never been a request.");
+			return;
+		}
+
+		// There was a request, so inform the one it has been denied from of it.
+		self.nethandler.send(to, &Packet::DenyGame(from));
     }
 
     fn start_game(&mut self, client1: ClientId, client2: ClientId) {

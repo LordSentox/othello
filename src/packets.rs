@@ -42,13 +42,21 @@ pub enum Packet {
 	ClientList(Vec<(ClientId, String)>),
 	/// Request a game. On the server, ClientId is the id of the requestee, on the client the id
 	/// of the one who has requested.
+	/// In direction Client->Server it is also the package used to accept a request, simply by
+	/// making a request to the client that had requested the game in the first place.
 	RequestGame(ClientId),
-	/// Response to a game request. On the server, ClientId is the id of the one this is aimed at,
-	/// on the client the one who has sent the response.
-	RequestGameResponse(ClientId, bool),
+	/// Deny a game response. If there was no request registered in the first place, this will
+	/// probably do nothing at all.
+	/// In direction Server->Client the id is of the one who has denied.
+	/// In direction Client->Server it is the id of the one to deny the game of.
+	DenyGame(ClientId),
 	/// Start a game with a fresh board. This is Server->Client only and the colour the client will
 	/// be controlling is sent, as well as the id of the opponent.
 	StartGame(ClientId, Piece),
+	/// Place a piece onto the board of the client with the ClientId, which is always the id of the
+	/// opponent. The server will never respond to this packet, since the client is supposed to
+	/// check the rules themselves aswell.
+	PlacePiece(ClientId, u8, u8),
 	/// Message to or from another client. If it is in direction Server->Client, the ID of the client
 	/// that has sent the message is the id, in direction Client->Server it's the id of the client
 	/// it is directed at.

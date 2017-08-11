@@ -13,6 +13,8 @@ pub mod packets;
 pub mod remote;
 pub mod score;
 
+use std::io;
+
 use board::{Board, Piece};
 use score::{Score};
 
@@ -26,14 +28,22 @@ use packets::Packet;
 const SCORE_HEIGHT: u32 = 20;
 
 fn main() {
-	// Connect to a server
 	println!("Welcome to othello.");
+
+	let login_name = match &CONFIG.network.login_name {
+		&Some(ref name) => name.clone(),
+		&None => {
+			print!("Login: ");
+			let mut login_name = String::new();
+			io::stdin().read_line(&mut login_name).expect("Could not read login name. Aborting. {}");
+
+			login_name
+		}
+	};
 
 	// Create the connection to the server.
 	// TODO: Handle the errors a little bit more graceful.
-	let nethandler = NetHandler::connect((CONFIG.network.server_ip.as_str(), CONFIG.network.server_port), &CONFIG.network.login_name).expect("Could not connect to the server.");
-
-	nethandler.send(&Packet::Message(0, "Hello World".to_string()));
+	let nethandler = NetHandler::connect((CONFIG.network.server_ip.as_str(), CONFIG.network.server_port), &login_name).expect("Could not connect to the server.");
 
 	// Create a test board.
 	let mut board = DrawableBoard::new(Board::new()).unwrap();

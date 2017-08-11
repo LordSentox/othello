@@ -87,6 +87,10 @@ impl Board {
 	}
 
 	pub fn place(&mut self, (x, y): (u8, u8), piece: Piece) -> bool {
+		if self.turn != piece {
+			return false;
+		}
+
 		// Check if the given position is a valid position on the board.
 		if x >= 8 || y >= 8 {
 			return false;
@@ -123,6 +127,9 @@ impl Board {
 
 		// Place the actual piece on the board.
 		self.squares[x as usize][y as usize] = Some(piece);
+
+		// Since the piece could be set successfully, it is now the other players turn.
+		self.turn = self.turn.opposite();
 
 		true
 	}
