@@ -69,10 +69,16 @@ impl GameHandler {
         if self.pending.contains(&(to, from)) {
             self.pending.remove(&(to, from));
 
+            println!("Starting game between [{}] and [{}]", from, to);
+
             // There has been no explicit response, but since both have requested a game from the
             // other client, we can assume that the game can be started.
             self.start_game(from, to);
         }
+
+        self.pending.insert((from, to));
+        println!("Added game request from [{}] to [{}]", from, to);
+        self.nethandler.send(to, &Packet::RequestGame(from));
     }
 
     fn handle_deny_game(&mut self, from: ClientId, to: ClientId) {
