@@ -1,4 +1,4 @@
-use sfml::window::{ContextSettings, VideoMode, Event, style};
+use sfml::window::{ContextSettings, Event, VideoMode, style};
 use sfml::window::mouse::Button;
 use sfml::graphics::{Color, RenderTarget, RenderWindow, Rect};
 use std::sync::Arc;
@@ -7,7 +7,84 @@ use board::*;
 use score::*;
 use packets::*;
 
-pub struct Game {
+pub trait Game {
+	fn handle_events(&mut self);
+	fn handle_packet(&mut self, packet: &Packet) -> bool;
+	fn draw(&mut self);
+}
+
+fn initialise_graphics() -> (DrawableBoard, DrawableScore, RenderWindow) {
+	// Create the board this game will be played in.
+	let board = DrawableBoard::new(Board::new()).unwrap();
+
+	// Create the window for the game.
+	let mut window = RenderWindow::new(VideoMode::new(board.size(), board.size() + SCORE_HEIGHT, 32), "SFML Othello", style::CLOSE, &ContextSettings::default()).unwrap();
+	window.set_framerate_limit(30);
+
+	// Create the Score Bar
+	let score_size = Rect::<u32> {
+		left: 0,
+		top: board.size(),
+		width: board.size(),
+		height: SCORE_HEIGHT
+	};
+
+	let score = DrawableScore::new(Score::new(&board), score_size);
+
+	(board, score, window)
+}
+
+pub struct OfflineGame {
+	board: DrawableBoard,
+	score: DrawableScore,
+	window: RenderWindow
+}
+
+
+impl OfflineGame {
+	pub fn new() -> OfflineGame {
+		let (board, score, window) = initialise_graphics();
+
+		OfflineGame {
+			board: board,
+			score: score,
+			window: window
+		}
+	}
+}
+
+impl Game for OfflineGame {
+	fn handle_events(&mut self) {
+		for event in self.window.events() {
+			if let Event::Closed = event {
+				return;
+			}
+			else if let Event::MouseButtonPressed {button, x, y} = event {
+				if button == Button::Left {
+					let pos = self.board.piece_index(x as u32, y as u32);
+					let turn = self.board.turn();
+					if self.board.place(pos, turn) {
+						self.score.update_score(&self.board);
+					}
+				}
+				else if button == Button::Right {
+					println!("Passing has not been implemented yet");
+				}
+			}
+		}
+	}
+
+	fn handle_packet(&mut self,  _: &Packet) -> bool { false }
+
+	fn draw(&mut self) {
+		self.window.clear(&Color::rgb(100, 200, 100));
+		self.window.draw(&self.board);
+		self.window.draw(&self.score);
+		self.window.display();
+	}
+}
+
+pub struct OnlineGame {
 	piece: Piece,
 	opponent: ClientId,
 	nethandler: Arc<NetHandler>,
@@ -16,26 +93,11 @@ pub struct Game {
 	window: RenderWindow
 }
 
-impl Game {
-	pub fn new(nethandler: Arc<NetHandler>, piece: Piece, opponent: ClientId) -> Game {
-		// Create the board this game will be played in.
-		let board = DrawableBoard::new(Board::new()).unwrap();
+impl OnlineGame {
+	pub fn new(nethandler: Arc<NetHandler>, piece: Piece, opponent: ClientId) -> OnlineGame {
+		let (board, score, window) = initialise_graphics();
 
-		// Create the window for the game.
-		let mut window = RenderWindow::new(VideoMode::new(board.size(), board.size() + SCORE_HEIGHT, 32), "SFML Othello", style::CLOSE, &ContextSettings::default()).unwrap();
-		window.set_framerate_limit(30);
-
-		// Create the Score Bar
-		let score_size = Rect::<u32> {
-			left: 0,
-			top: board.size(),
-			width: board.size(),
-			height: SCORE_HEIGHT
-		};
-
-		let score = DrawableScore::new(Score::new(&board), score_size);
-
-		Game {
+		OnlineGame {
 			piece: piece,
 			opponent: opponent,
 			nethandler: nethandler,
@@ -44,8 +106,10 @@ impl Game {
 			window: window
 		}
 	}
+}
 
-	pub fn update(&mut self) {
+impl Game for OnlineGame {
+	fn handle_events(&mut self) {
 		for event in self.window.events() {
 			if let Event::Closed = event {
 				return;
@@ -69,7 +133,7 @@ impl Game {
 
 	/// Handle the packet. Returns true if the packet was part of this game and doesn't have to be
 	/// passed on to another game anymore.
-	pub fn handle_packet(&mut self, packet: &Packet) -> bool {
+	fn handle_packet(&mut self, packet: &Packet) -> bool {
 		match packet {
 			&Packet::PlacePiece(opponent, x, y) => {
 				if self.opponent != opponent {
@@ -84,7 +148,7 @@ impl Game {
 		}
 	}
 
-	pub fn draw(&mut self) {
+	fn draw(&mut self) {
 		self.window.clear(&Color::rgb(100, 200, 100));
 		self.window.draw(&self.board);
 		self.window.draw(&self.score);

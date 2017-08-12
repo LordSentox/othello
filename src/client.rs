@@ -27,6 +27,8 @@ use packets::*;
 
 fn print_help() {
 	println!("help -- show this message");
+	println!("start -- Start a local game.");
+	println!("connect <address> -- Connect to the specified server.");
 	println!("challenge <name/id> -- Challenge the client with the provided name or id to a Duel or accept a request by them.");
 	println!("deny <name/id> -- Deny a game from the client, if the client had requested one.");
 	println!("exit -- End the program.");
@@ -64,30 +66,14 @@ fn process_input() -> Receiver<String> {
 fn main() {
 	println!("Welcome to othello.");
 
-	let login_name = match &CONFIG.network.login_name {
-		&Some(ref name) => name.clone(),
-		&None => {
-			print!("Login: ");
-			if io::stdout().flush().is_err() { println!(""); }
-			let mut login_name = String::new();
-			io::stdin().read_line(&mut login_name).expect("Could not read login name. Aborting. {}");
-
-			login_name.trim_right_matches("\n").to_string()
-		}
-	};
-
-	// Create the connection to the server.
-	// TODO: Handle the errors a little bit more gracefully.
-	let nethandler = NetHandler::connect((CONFIG.network.server_ip.as_str(), CONFIG.network.server_port), &login_name).expect("Could not connect to the server.");
-	let packets = Arc::new(Mutex::new(VecDeque::new()));
-	nethandler.subscribe(Arc::downgrade(&packets));
-
+	let mut nethandler: Option<Arc<NetHandler>> = None;
 	let mut client_list: Vec<(ClientId, String)> = Vec::new();
+	let packets = Arc::new(Mutex::new(VecDeque::new()));
 
 	let cmd_rcv = process_input();
 
 	// All the games the client is currently engaged in.
-	let mut games: Vec<Game> = Vec::new();
+	let mut games: Vec<Box<Game>> = Vec::new();
 	loop {
 		// If the client is currently not running any games, the thread will block
 		// and wait for the next command. Otherwise this is obviously not possible,
@@ -111,6 +97,47 @@ fn main() {
 			let parts: Vec<&str> = cmd.split_whitespace().collect();
 			if let Some(raw) = parts.get(0) {
 				match raw {
+					&"connect" => {
+						if parts.len() != 2 {
+							println!("Wrong number of arguments.");
+							print_help();
+						}
+						else {
+							let login_name = match &CONFIG.network.login_name {
+								&Some(ref name) => name.clone(),
+								&None => {
+									print!("Login: ");
+									if io::stdout().flush().is_err() { println!(""); }
+									let mut login_name = String::new();
+									io::stdin().read_line(&mut login_name).expect("Could not read login name. Aborting. {}");
+
+									login_name.trim_right_matches("\n").to_string()
+								}
+							};
+
+							// Create the connection to the server.
+							// TODO: Handle the errors a little bit more gracefully.
+							nethandler = match NetHandler::connect(&parts[1], &login_name) {
+								Ok(n) => {
+									n.subscribe(Arc::downgrade(&packets));
+									Some(n)
+								},
+								Err(err) => {
+									println!("Could not connect to server {:?}", err);
+									None
+								}
+							};
+						}
+					},
+					&"start" => {
+						if parts.len() != 1 {
+							println!("Wrong number of arguments.");
+							print_help();
+						}
+						else {
+							games.push(Box::new(OfflineGame::new()));
+						}
+					}
 					&"challenge" => {
 						if parts.len() != 2 {
 							println!("Wrong number of arguments.");
@@ -121,7 +148,7 @@ fn main() {
 							let mut found = false;
 							for &(ref id, ref name) in &client_list {
 								if name.to_lowercase() == parts[1].to_lowercase() {
-									nethandler.send(&Packet::RequestGame(*id));
+									nethandler.as_ref().unwrap().send(&Packet::RequestGame(*id));
 									println!("Requested game from client [{}]: {}", id, name);
 									found = true;
 									break;
@@ -133,7 +160,7 @@ fn main() {
 							else if let Ok(requestee) = parts[1].parse::<ClientId>() {
 								for &(ref id, ref name) in &client_list {
 									if *id == requestee {
-										nethandler.send(&Packet::RequestGame(*id));
+										nethandler.as_ref().unwrap().send(&Packet::RequestGame(*id));
 										println!("Requested game from client [{}]: {}", id, name);
 										found = true;
 										break;
@@ -155,7 +182,7 @@ fn main() {
 							// Try find the client with the corresponding name.
 							for &(ref id, ref name) in &client_list {
 								if name.to_lowercase() == parts[1].to_lowercase() {
-									nethandler.send(&Packet::DenyGame(*id));
+									nethandler.as_ref().unwrap().send(&Packet::DenyGame(*id));
 									println!("Denying game from client [{}]: {}", id, name);
 								}
 							}
@@ -164,7 +191,7 @@ fn main() {
 							if let Ok(requestee) = parts[1].parse::<ClientId>() {
 								for &(ref id, ref name) in &client_list {
 									if *id == requestee {
-										nethandler.send(&Packet::DenyGame(*id));
+										nethandler.as_ref().unwrap().send(&Packet::DenyGame(*id));
 										println!("Denying game from client [{}]: {}", id, name);
 									}
 								}
@@ -212,13 +239,13 @@ fn main() {
 				Packet::ClientList(clients) => client_list = clients,
 				Packet::RequestGame(client) => println!("Client [{}] has requested a game. Use challenge to accept the request.", client),
 				Packet::Message(client, message) => println!("[{}]: {}", client, message),
-				Packet::StartGame(opponent, piece) => games.push(Game::new(nethandler.clone(), piece, opponent)),
+				Packet::StartGame(opponent, piece) => games.push(Box::new(OnlineGame::new(nethandler.as_ref().unwrap().clone(), piece, opponent))),
 				p => println!("{:?} was not handled.", p)
 			}
 		}
 
 		for ref mut game in &mut games {
-			game.update();
+			game.handle_events();
 			game.draw();
 		}
 	}

@@ -1,6 +1,4 @@
 [network]
-server_ip = "localhost"
-server_port = 44942
 # login_name = "John Doe"
 
 [graphics]
