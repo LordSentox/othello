@@ -14,8 +14,10 @@ game, once you have aquired the source code.
 Othello is written in [rust](http://rust-lang.org) and uses the rust packet manager
 *cargo* to manage its dependencies and targets, so you will need to install both
 in order to compile and run this project.
-Also, you will need to install [sfml2](http://sfml-dev.org) on your computer,
-since this project relies on it for its graphics code.
+Also, you will need to install the C-Bindings for [sfml2](http://sfml-dev.org)
+on your computer, since this project relies on it for its graphics code.
+(If you are using a packet manager, look for either csml or maybe just sfml and
+they should pop up.)
 
 ##### Starting a server:
 If you want to start a debug server, you can start one with:
