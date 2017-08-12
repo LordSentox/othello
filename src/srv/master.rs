@@ -47,8 +47,7 @@ impl Master {
         if !self.named_clients.contains_key(&client) {
             println!("Unnamed client disconnected. Id [{}]", client);
         }
-
-        {
+        else {
             let name = self.named_clients.get(&client).unwrap();
             println!("'{}' disconnected. Id [{}]", name, client);
         }
