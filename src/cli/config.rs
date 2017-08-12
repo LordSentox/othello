@@ -20,8 +20,6 @@ pub enum ReadError {
 
 #[derive(Deserialize)]
 pub struct Network {
-	pub server_ip: String,
-	pub server_port: u16,
 	pub login_name: Option<String>
 }
 
