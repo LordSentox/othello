@@ -1,6 +1,7 @@
 use std::sync::{Arc, Weak, Mutex};
 use board::*;
 use std::thread;
+use std::time::Duration;
 use std::collections::VecDeque;
 use packets::*;
 
@@ -54,6 +55,8 @@ impl Game {
         thread::spawn(move || {
             while game.is_running() {
                 game.handle_packets();
+
+				thread::sleep(Duration::from_millis(50));
             }
         });
 
@@ -79,8 +82,6 @@ impl Game {
 			};
 
 			self.handle_packet(packet, Piece::White);
-
-			thread::sleep_ms(50);
 		}
     }
 

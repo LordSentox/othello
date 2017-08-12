@@ -20,8 +20,6 @@ use std::sync::{Arc, Mutex};
 use std::collections::VecDeque;
 use std::time::Duration;
 
-use sfml::window::mouse::Button;
-
 use cli::*;
 use packets::*;
 
@@ -201,19 +199,23 @@ fn main() {
 				None => break
 			};
 
+			let mut packet_handled = false;
 			for ref mut game in &mut games {
 				if game.handle_packet(&packet) {
-					continue;
+					packet_handled = true;
+					break;
 				}
 			}
 
-			// The packet is of a different kind.
-			match packet {
-				Packet::ClientList(clients) => client_list = clients,
-				Packet::RequestGame(client) => println!("Client [{}] has requested a game. Use challenge to accept the request.", client),
-				Packet::Message(client, message) => println!("[{}]: {}", client, message),
-				Packet::StartGame(opponent, piece) => games.push(Game::new(nethandler.clone(), piece, opponent)),
-				p => println!("{:?} was not handled.", p)
+			if !packet_handled {
+				// The packet is of a different kind.
+				match packet {
+					Packet::ClientList(clients) => client_list = clients,
+					Packet::RequestGame(client) => println!("Client [{}] has requested a game. Use challenge to accept the request.", client),
+					Packet::Message(client, message) => println!("[{}]: {}", client, message),
+					Packet::StartGame(opponent, piece) => games.push(Game::new(nethandler.clone(), piece, opponent)),
+					p => println!("{:?} was not handled.", p)
+				}
 			}
 		}
 

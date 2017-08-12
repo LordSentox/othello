@@ -23,7 +23,7 @@ impl Game {
 
 		// Create the window for the game.
 		let mut window = RenderWindow::new(VideoMode::new(board.size(), board.size() + SCORE_HEIGHT, 32), "SFML Othello", style::CLOSE, &ContextSettings::default()).unwrap();
-		window.set_framerate_limit(30);
+		window.set_framerate_limit(20);
 
 		// Create the Score Bar
 		let score_size = Rect::<u32> {
