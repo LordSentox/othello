@@ -250,5 +250,7 @@ fn main() {
 			game.handle_events();
 			game.draw();
 		}
+
+		games.retain(|ref game| { game.running() });
 	}
 }

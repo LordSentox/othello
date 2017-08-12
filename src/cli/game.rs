@@ -10,6 +10,7 @@ use packets::*;
 pub trait Game {
 	fn handle_events(&mut self);
 	fn handle_packet(&mut self, packet: &Packet) -> bool;
+	fn running(&self) -> bool;
 	fn draw(&mut self);
 }
 
@@ -37,7 +38,8 @@ fn initialise_graphics() -> (DrawableBoard, DrawableScore, RenderWindow) {
 pub struct OfflineGame {
 	board: DrawableBoard,
 	score: DrawableScore,
-	window: RenderWindow
+	window: RenderWindow,
+	running: bool
 }
 
 
@@ -48,7 +50,8 @@ impl OfflineGame {
 		OfflineGame {
 			board: board,
 			score: score,
-			window: window
+			window: window,
+			running: true
 		}
 	}
 }
@@ -57,7 +60,7 @@ impl Game for OfflineGame {
 	fn handle_events(&mut self) {
 		for event in self.window.events() {
 			if let Event::Closed = event {
-				return;
+				self.running = false;
 			}
 			else if let Event::MouseButtonPressed {button, x, y} = event {
 				if button == Button::Left {
@@ -75,6 +78,10 @@ impl Game for OfflineGame {
 	}
 
 	fn handle_packet(&mut self,  _: &Packet) -> bool { false }
+
+	fn running(&self) -> bool {
+		self.running
+	}
 
 	fn draw(&mut self) {
 		self.window.clear(&Color::rgb(100, 200, 100));
@@ -146,6 +153,10 @@ impl Game for OnlineGame {
 			}
 			_ => false
 		}
+	}
+
+	fn running(&self) -> bool {
+		true
 	}
 
 	fn draw(&mut self) {
