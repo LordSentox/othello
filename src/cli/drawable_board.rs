@@ -6,6 +6,7 @@ use sfml::graphics::{Color, Texture, Drawable, RenderTarget, RenderStates, Sprit
 /// Client ontly wrapper for the board, where the board has to be rendered.
 pub struct DrawableBoard {
 	board_tex: Texture,
+	board_light_tex: Texture,
 	white_piece_tex: Texture,
 	black_piece_tex: Texture,
 	shadow_tex: Option<Texture>, // The shadow that will be drawn around each piece.
@@ -25,6 +26,20 @@ impl DrawableBoard {
 		// Check if the board texture is quadratic.
 		if board_tex.size().x != board_tex.size().y {
 			println!("Could not load board texture. Texture must be quadratic.");
+			return None;
+		}
+
+		let board_light_tex = match Texture::from_file(&CONFIG.graphics.board_light) {
+			Some(t) => t,
+			None => {
+				println!("Could not load board light texture.");
+				return None;
+			}
+		};
+
+		// The shading texture and the board texture must be the same size.
+		if board_light_tex.size() != board_tex.size() {
+			println!("The board texture and the board light texture must be the same size.");
 			return None;
 		}
 
@@ -73,6 +88,7 @@ impl DrawableBoard {
 		// Buffer drawable board.
 		let db = DrawableBoard {
 			board_tex: board_tex,
+			board_light_tex: board_light_tex,
 			white_piece_tex: white_piece_tex,
 			black_piece_tex: black_piece_tex,
 			shadow_tex: shadow_tex,
@@ -187,6 +203,11 @@ impl Drawable for DrawableBoard {
 		for (piece, _) in pieces {
 			target.draw(&piece);
 		}
+
+		// Draw the light on the board over everything.
+		let mut board_light_spr = Sprite::with_texture(&self.board_light_tex);
+		board_light_spr.set_color(&Color::rgba(255, 255, 255, (CONFIG.graphics.board_light_opacity as f32 / 100.0 * 255.0) as u8));
+		target.draw(&board_light_spr);
 	}
 }
 

@@ -26,6 +26,8 @@ pub struct Network {
 #[derive(Deserialize)]
 pub struct Graphics {
 	pub board: String,
+	pub board_light: String,
+	pub board_light_opacity: u8,
 	pub square_size: Option<u16>,
 	pub white_piece: String,
 	pub black_piece: String,

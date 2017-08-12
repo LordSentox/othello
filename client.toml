@@ -6,6 +6,8 @@
 
 # board = "data/board_test.png"
 board = "data/board.png"
+board_light = "data/shading.png"
+board_light_opacity = 15
 
 # white_piece = "data/white_piece_test.png"
 white_piece = "data/white_piece.png"
