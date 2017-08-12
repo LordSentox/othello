@@ -7,7 +7,7 @@ lazy_static! {
 	pub static ref CONFIG: Config = {
 		match Config::load() {
 			Ok(conf) => conf,
-			Err(err) => panic!("Could not find configuration file 'client.toml'. {:?}", err)
+			Err(err) => panic!("Could not read client.toml: {:?}", err)
 		}
 	};
 }
