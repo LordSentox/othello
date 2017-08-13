@@ -26,7 +26,7 @@ use packets::*;
 fn print_help() {
 	println!("help -- show this message");
 	println!("start -- Start a local game.");
-	println!("connect <address> -- Connect to the specified server.");
+	println!("connect <address> (<login_name>) -- Connect to the specified server.");
 	println!("challenge <name/id> -- Challenge the client with the provided name or id to a Duel or accept a request by them.");
 	println!("deny <name/id> -- Deny a game from the client, if the client had requested one.");
 	println!("exit -- End the program.");
@@ -100,21 +100,16 @@ fn main() {
 							println!("Wrong number of arguments.");
 							print_help();
 						}
-						else {
+						if parts.len() == 2 {
 							let login_name = match &CONFIG.network.login_name {
 								&Some(ref name) => name.clone(),
 								&None => {
-									print!("Login: ");
-									if io::stdout().flush().is_err() { println!(""); }
-									let mut login_name = String::new();
-									io::stdin().read_line(&mut login_name).expect("Could not read login name. Aborting. {}");
+									println!("Login name could not be read from configuration file. Please try again, but provide a name in the command.");
 
-									login_name.trim_right_matches("\n").to_string()
 								}
 							};
 
 							// Create the connection to the server.
-							// TODO: Handle the errors a little bit more gracefully.
 							nethandler = match NetHandler::connect(&parts[1], &login_name) {
 								Ok(n) => {
 									n.subscribe(Arc::downgrade(&packets));
