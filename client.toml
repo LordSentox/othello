@@ -4,21 +4,13 @@
 [graphics]
 # square_size = 64
 
-# board = "data/board_test.png"
 board = "data/board.png"
-board_light = "data/shading.png"
+board_light = "data/light.png"
 board_light_opacity = 15
 
-# white_piece = "data/white_piece_test.png"
 white_piece = "data/white_piece.png"
-
-# black_piece = "data/black_piece_test.png"
 black_piece = "data/black_piece.png"
-
-# shadow = "data/shadow_test.png"
 shadow = "data/shadow.png"
 
-# white_score_colour = [255, 255, 255]
 white_score_colour = [227, 220, 215]
-# white_score_colour = [0, 0, 0]
 black_score_colour = [63, 60, 65]
