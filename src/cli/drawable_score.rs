@@ -8,13 +8,13 @@ use config::CONFIG;
 
 pub const SCORE_HEIGHT: u32 = 20;
 
-pub struct DrawableScore {
+pub struct DrawableScore<'a> {
 	bounds: Rect<u32>,
-	inner: Score
+	inner: Score<'a>
 }
 
-impl DrawableScore {
-	pub fn new(score: Score, bounds: Rect<u32>) -> DrawableScore {
+impl<'a> DrawableScore<'a> {
+	pub fn new(score: Score<'a>, bounds: Rect<u32>) -> DrawableScore {
 		DrawableScore {
 			bounds: bounds,
 			inner: score
@@ -22,7 +22,7 @@ impl DrawableScore {
 	}
 }
 
-impl Drawable for DrawableScore {
+impl<'a> Drawable for DrawableScore<'a> {
 	fn draw<'se, 'tex, 'sh, 'shte>(&'se self, target: &mut RenderTarget, _: RenderStates<'tex, 'sh, 'shte>)
 	where 'se: 'sh {
 		let (white, black) = self.get_score();
@@ -44,16 +44,16 @@ impl Drawable for DrawableScore {
 	}
 }
 
-impl Deref for DrawableScore {
-	type Target = Score;
+impl<'a> Deref for DrawableScore<'a> {
+	type Target = Score<'a>;
 
-	fn deref(&self) -> &Score {
+	fn deref(&self) -> &Score<'a> {
 		&self.inner
 	}
 }
 
-impl DerefMut for DrawableScore {
-	fn deref_mut(&mut self) -> &mut Score {
+impl<'a> DerefMut for DrawableScore<'a> {
+	fn deref_mut(&mut self) -> &mut Score<'a> {
 		&mut self.inner
 	}
 }

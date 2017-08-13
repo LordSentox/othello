@@ -37,20 +37,37 @@ impl Board {
 		}
 	}
 
-	// Check if a stone with the given colour can be placed at the point in
-	// question.
+	/// Gets all opportunities for the provided piece. It is irrellevant whos turn it is, the board
+	/// will check everything as if it were the turn of the provided piece.
+	pub fn opportunities(&self, piece: Piece) -> Vec<(u8, u8)> {
+		// First, create a vector of all places where there is no piece. This will speed up the
+		// process a little bit, since can_place() is a fairly costly operation.
+		let mut opportunities: Vec<(u8, u8)> = Vec::new();
+		for x in 0..8 {
+			for y in 0..8 {
+				if self.squares[x][y].is_none() {
+					opportunities.push((x as u8, y as u8));
+				}
+			}
+		}
+
+		opportunities.retain(|&(ref x, ref y)| { self.can_place((*x, *y), piece) });
+		opportunities
+	}
+
+	/// Check if a stone with the given colour can be placed at the point in
+	/// question.
 	pub fn can_place(&self, (x, y): (u8, u8), piece: Piece) -> bool {
 		!self.affected_directions((x, y), piece).is_empty()
 	}
 
-	// Returns a vector of directions that would be affected, should the piece
-	// be placed at the square in question.
+	/// Returns a vector of directions that would be affected, should the piece
+	/// be placed at the square in question.
 	pub fn affected_directions(&self, (x, y): (u8, u8), piece: Piece) -> Vec<(i8, i8)> {
 		let dirs: Vec<(i8, i8)> = vec![(-1, 0), (-1, -1), (0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1)];
 		let mut aff_dirs: Vec<(i8, i8)> = Vec::new();
 
 		for (dx, dy) in dirs {
-
 			let mut first = true;
 			let mut done = false;
 			let mut err_occured = false;
@@ -136,6 +153,10 @@ impl Board {
 
 	pub fn turn(&self) -> Piece {
 		self.turn
+	}
+
+	pub fn pass(&mut self) {
+		self.turn = self.turn.opposite();
 	}
 
 	pub fn squares(&self) -> &Vec<Vec<Option<Piece>>> {

@@ -1,37 +1,62 @@
 use board::{Board, Piece};
 
 /// Bar to keep track of the current score between the two teams.
-pub struct Score {
+pub struct Score<'a> {
+	board: &'a Board,
 	white: u8,
 	black: u8
 }
 
-impl Score {
-	pub fn new(board: &Board) -> Score {
-		let mut bar = Score {
-			white: 0,
-			black: 0
-		};
-
-		bar.update_score(&board);
-		bar
-	}
-
-	// The score only gets updated, when this function is called, so that should
-	// always be called after a stone has been placed on the board.
-	pub fn update_score(&mut self, board: &Board) {
-		self.white = 0;
-		self.black = 0;
+impl<'a> Score<'a> {
+	pub fn score(board: &'a Board) -> Score<'a> {
+		let mut white = 0;
+		let mut black = 0;
 
 		for square in board.squares().iter().flat_map(|v| {v.iter()}) {
 			match square {
-				&Some(Piece::Black) => self.black += 1,
-				&Some(Piece::White) => self.white += 1,
+				&Some(Piece::Black) => black += 1,
+				&Some(Piece::White) => white += 1,
 				_ => {}
 			}
 		}
 
-		println!("Current score(w:b): {}:{}", self.white, self.black);
+		Score {
+			board: board,
+			white: white,
+			black: black
+		}
+	}
+
+	pub fn white(&self) -> u8 {
+		self.white
+	}
+
+	pub fn black(&self) -> u8 {
+		self.black
+	}
+
+	/// Determine the winner of the game. Returns None in case the winner is unclear
+	/// as of yet, otherwise the colour of the winner. This is strictly by stones,
+	/// however. The ultimate winner may be decided somewhere else, for instance when
+	/// one player forfeits the game.
+	pub fn winner(&self) -> Option<Piece> {
+		// The winner will be determined when both players are out of options, i.e. the board
+		// cannot change any more.
+		if !self.board.opportunities(Piece::Black).is_empty() {
+			return None;
+		}
+		if !self.board.opportunities(Piece::White).is_empty() {
+			return None;
+		}
+
+		// White has one when both parties have the same amount of stones, because black always has
+		// the first move.
+		if self.white >= self.black {
+			Some(Piece::White)
+		}
+		else {
+			Some(Piece::Black)
+		}
 	}
 
 	pub fn get_score(&self) -> (u8, u8) {

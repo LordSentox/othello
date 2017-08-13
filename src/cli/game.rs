@@ -14,7 +14,7 @@ pub trait Game {
 	fn draw(&mut self);
 }
 
-fn initialise_graphics() -> (DrawableBoard, DrawableScore, RenderWindow) {
+fn initialise_graphics() -> (DrawableBoard, RenderWindow) {
 	// Create the board this game will be played in.
 	let board = DrawableBoard::new(Board::new()).unwrap();
 
@@ -22,22 +22,13 @@ fn initialise_graphics() -> (DrawableBoard, DrawableScore, RenderWindow) {
 	let mut window = RenderWindow::new(VideoMode::new(board.size(), board.size() + SCORE_HEIGHT, 32), "SFML Othello", style::CLOSE, &ContextSettings::default()).unwrap();
 	window.set_framerate_limit(20);
 
-	// Create the Score Bar
-	let score_size = Rect::<u32> {
-		left: 0,
-		top: board.size(),
-		width: board.size(),
-		height: SCORE_HEIGHT
-	};
 
-	let score = DrawableScore::new(Score::new(&board), score_size);
 
-	(board, score, window)
+	(board, window)
 }
 
 pub struct OfflineGame {
 	board: DrawableBoard,
-	score: DrawableScore,
 	window: RenderWindow,
 	running: bool
 }
@@ -45,11 +36,10 @@ pub struct OfflineGame {
 
 impl OfflineGame {
 	pub fn new() -> OfflineGame {
-		let (board, score, window) = initialise_graphics();
+		let (board, window) = initialise_graphics();
 
 		OfflineGame {
 			board: board,
-			score: score,
 			window: window,
 			running: true
 		}
@@ -67,11 +57,27 @@ impl Game for OfflineGame {
 					let pos = self.board.piece_index(x as u32, y as u32);
 					let turn = self.board.turn();
 					if self.board.place(pos, turn) {
-						self.score.update_score(&self.board);
+						let score = Score::score(&self.board);
+						match score.winner() {
+							Some(p) => {
+								match p {
+									Piece::White => println!("White has won! {}:{}", score.white(), score.black()),
+									Piece::Black => println!("Black has won! {}:{}", score.black(), score.white()),
+								}
+
+								self.running = false;
+							},
+							None => {}
+						}
 					}
 				}
 				else if button == Button::Right {
-					println!("Passing has not been implemented yet");
+					match self.board.turn() {
+						Piece::White => println!("White has passed"),
+						Piece::Black => println!("Black has passed")
+					}
+
+					self.board.pass();
 				}
 			}
 		}
@@ -86,7 +92,17 @@ impl Game for OfflineGame {
 	fn draw(&mut self) {
 		self.window.clear(&Color::rgb(100, 200, 100));
 		self.window.draw(&self.board);
-		self.window.draw(&self.score);
+
+		// Create the Score Bar
+		let score_size = Rect::<u32> {
+			left: 0,
+			top: self.board.size(),
+			width: self.board.size(),
+			height: SCORE_HEIGHT
+		};
+		let score = DrawableScore::new(Score::score(&self.board), score_size);
+		self.window.draw(&score);
+
 		self.window.display();
 	}
 }
@@ -96,20 +112,18 @@ pub struct OnlineGame {
 	opponent: ClientId,
 	nethandler: Arc<NetHandler>,
 	board: DrawableBoard,
-	score: DrawableScore,
 	window: RenderWindow
 }
 
 impl OnlineGame {
 	pub fn new(nethandler: Arc<NetHandler>, piece: Piece, opponent: ClientId) -> OnlineGame {
-		let (board, score, window) = initialise_graphics();
+		let (board, window) = initialise_graphics();
 
 		OnlineGame {
 			piece: piece,
 			opponent: opponent,
 			nethandler: nethandler,
 			board: board,
-			score: score,
 			window: window
 		}
 	}
@@ -125,8 +139,6 @@ impl Game for OnlineGame {
 				if button == Button::Left {
 					let pos = self.board.piece_index(x as u32, y as u32);
 					if self.board.place(pos, self.piece) {
-						self.score.update_score(&self.board);
-
 						// Send the move to the server.
 						self.nethandler.send(&Packet::PlacePiece(self.opponent, pos.0, pos.1));
 					}
@@ -148,7 +160,6 @@ impl Game for OnlineGame {
 				}
 
 				self.board.place((x, y), self.piece.opposite());
-				self.score.update_score(&self.board);
 				true
 			}
 			_ => false
@@ -162,7 +173,17 @@ impl Game for OnlineGame {
 	fn draw(&mut self) {
 		self.window.clear(&Color::rgb(100, 200, 100));
 		self.window.draw(&self.board);
-		self.window.draw(&self.score);
+
+		// Create the Score Bar
+		let score_size = Rect::<u32> {
+			left: 0,
+			top: self.board.size(),
+			width: self.board.size(),
+			height: SCORE_HEIGHT
+		};
+		let score = DrawableScore::new(Score::score(&self.board), score_size);
+		self.window.draw(&score);
+
 		self.window.display();
 	}
 }
