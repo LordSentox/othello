@@ -1,8 +1,8 @@
 pub mod config;
 pub use self::config::*;
 
-pub mod console_input;
-pub use self::console_input::*;
+pub mod console_commands;
+pub use self::console_commands::*;
 
 pub mod drawable_board;
 pub use self::drawable_board::*;
