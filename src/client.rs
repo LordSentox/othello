@@ -13,46 +13,11 @@ pub mod packets;
 pub mod remote;
 pub mod score;
 
-use std::io::{self, Write};
-use std::thread;
-use std::sync::mpsc::{self, Receiver};
 use std::sync::{Arc, Mutex};
 use std::collections::VecDeque;
-use std::time::Duration;
 
 use cli::*;
 use packets::*;
-
-
-
-/// Reads the user input in a new thread. If it cannot be interpreted on the spot,
-/// it will be sent to the receiver.
-fn process_input_old() -> Receiver<String> {
-	let (sender, receiver) = mpsc::channel();
-
-	thread::spawn(move || {
-		loop {
-			let mut cmd = String::new();
-			if io::stdin().read_line(&mut cmd).is_err() {
-				println!("Could not read command. Please try again.");
-			}
-
-			let cmd = cmd.trim_right_matches("\n").to_string();
-
-			if cmd == "help" {
-				// print_help();
-			}
-			else {
-				if sender.send(cmd).is_err() {
-					println!("Receiver could not receive command. Exiting input thread.");
-					break;
-				}
-			}
-		}
-	});
-
-	receiver
-}
 
 fn main() {
 	println!("Welcome to othello.");

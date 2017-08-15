@@ -1,5 +1,5 @@
 use std::sync::{Arc, Weak, Mutex};
-use super::{Game, Master, NetClient, NetHandler};
+use super::{Game, NetHandler};
 use packets::*;
 use std::collections::{HashSet, VecDeque};
 

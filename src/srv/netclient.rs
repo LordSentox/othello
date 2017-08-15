@@ -1,10 +1,9 @@
 use std::sync::{Arc, Weak, Mutex, RwLock};
-use std::sync::mpsc::{self, Sender, Receiver};
 use remote::Remote;
 use packets::*;
 use std::thread::{self, JoinHandle};
 use super::nethandler::*;
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 
 /// Connection to a client on the Network.
 pub struct NetClient {

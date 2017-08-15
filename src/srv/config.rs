@@ -3,6 +3,16 @@ use std::io::prelude::*;
 use std::io;
 use toml;
 
+lazy_static! {
+	pub static ref CONFIG: Config = {
+		match Config::load() {
+			Ok(conf) => conf,
+			Err(err) => panic!("Could not read server.toml: {:?}", err)
+		}
+	};
+}
+
+#[derive(Debug)]
 pub enum ReadError {
 	IO(io::Error),
 	TOML(toml::de::Error)
@@ -11,8 +21,8 @@ pub enum ReadError {
 // Holds the server configuration.
 #[derive(Deserialize)]
 pub struct Config {
-	port: u16,
-	max_clients: usize
+	pub port: u16,
+	pub max_clients: usize
 }
 
 impl Config {

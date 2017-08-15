@@ -5,9 +5,9 @@ use packets::*;
 use std::time::Duration;
 
 pub enum DirSocket {
-	READ,
-	WRITE,
-	BOTH
+	Read,
+	Write,
+	Both
 }
 
 /// A safe wrapper around a stream, which allows exactly one thread to read
@@ -43,9 +43,9 @@ impl Remote {
 	/// If set to None, the part in question will block indefinately.
 	pub fn set_timeout(&self, timeout: Option<Duration>, dir: DirSocket) -> io::Result<()> {
 		match dir {
-			DirSocket::READ => self.read.lock().unwrap().set_read_timeout(timeout),
-			DirSocket::WRITE => self.write.lock().unwrap().set_write_timeout(timeout),
-			DirSocket::BOTH => {
+			DirSocket::Read => self.read.lock().unwrap().set_read_timeout(timeout),
+			DirSocket::Write => self.write.lock().unwrap().set_write_timeout(timeout),
+			DirSocket::Both => {
 				if let Err(err) = self.read.lock().unwrap().set_read_timeout(timeout) {
 					return Err(err);
 				}

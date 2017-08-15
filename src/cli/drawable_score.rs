@@ -1,8 +1,7 @@
 use std::ops::{Deref, DerefMut};
-use sfml::graphics::{CircleShape, Color, Drawable, Rect, RectangleShape, RenderTarget, RenderStates, Shape, Transformable};
+use sfml::graphics::{Color, Drawable, Rect, RectangleShape, RenderTarget, RenderStates, Shape, Transformable};
 use sfml::system::Vector2f;
 
-use board::{Piece, Board};
 use score::Score;
 use config::CONFIG;
 

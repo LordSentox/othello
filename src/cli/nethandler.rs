@@ -1,10 +1,12 @@
 use std::sync::{Arc, Weak, Mutex, RwLock};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::{self, JoinHandle};
 use packets::*;
-use remote::Remote;
+use remote::*;
 use std::net::{TcpStream, ToSocketAddrs};
 use std::collections::VecDeque;
 use std::io::Error as IOError;
+use std::time::Duration;
 
 pub type ArcRw<T> = Arc<RwLock<T>>;
 
@@ -21,9 +23,10 @@ pub enum Error {
 pub struct NetHandler {
 	client_id: ClientId,
 	login_name: String,
-	remote: Remote,
-	packets: RwLock<Vec<Weak<Mutex<VecDeque<Packet>>>>>,
-	// pt_handle: Option<JoinHandle<()>>
+	remote: Arc<Remote>,
+	packets: ArcRw<Vec<Weak<Mutex<VecDeque<Packet>>>>>,
+	handle: Option<JoinHandle<()>>,
+	running: Arc<AtomicBool>
 }
 
 impl NetHandler {
@@ -67,20 +70,21 @@ impl NetHandler {
 			Err(err) => return Err(Error::PacketRead(err))
 		}
 
-		let nethandler = Arc::new(NetHandler {
-			client_id: id,
-			login_name: login_name.to_string(),
-			remote: remote,
-			packets: RwLock::new(Vec::new()),
-			// pt_handle: None
-		});
+		// Now that this sequence is over, a timeout is set on the read thread, so that it can be
+		// cancelled gracefully.
+		remote.set_timeout(Some(Duration::from_millis(100)), DirSocket::Read).expect("Could not set Socket read timeout.");
+		let remote = Arc::new(remote);
+		let packets: ArcRw<Vec<Weak<Mutex<VecDeque<Packet>>>>> = Arc::new(RwLock::new(Vec::new()));
 
 		// The connection has been established successfully. The login was successful.
 		// Now we can start the Network-thread and return the NetHandler.
-		let nethandler_clone = nethandler.clone();
-		let _ = thread::spawn(move || {
-			loop {
-				let packet = match nethandler_clone.remote.read_packet() {
+		let remote_clone = remote.clone();
+		let packets_clone = packets.clone();
+		let running = Arc::new(AtomicBool::new(true));
+		let running_clone = running.clone();
+		let handle = thread::spawn(move || {
+			while running_clone.load(Ordering::Relaxed) {
+				let packet = match remote_clone.read_packet() {
 					Ok(p) => p,
 					Err(PacketReadError::Closed) => {
 						println!("The connection has been closed by the server.");
@@ -88,13 +92,13 @@ impl NetHandler {
 					},
 					Err(err) => {
                         // An error occured. Ignore this packet.
-                        println!("Error reading packet from client [{}]. {:?}", id, err);
+                        println!("Error reading packet. {:?}", err);
                         continue;
 					}
 				};
 
 				// Send the packet to all subscribed handlers.
-				for s in &*nethandler_clone.packets.read().unwrap() {
+				for s in &*packets_clone.read().unwrap() {
 					if let Some(s) = s.upgrade() {
 						s.lock().unwrap().push_back(packet.clone());
 					}
@@ -105,12 +109,19 @@ impl NetHandler {
                 // If the Disconnection packet has been created, there will no longer be anything
                 // to do, so the nethandler will be stopped.
                 if let Packet::Disconnect = packet {
-                    break;
+                    running_clone.store(false, Ordering::Relaxed);
                 }
 			}
 		});
 
-		Ok(nethandler)
+		Ok(Arc::new(NetHandler {
+			client_id: id,
+			login_name: login_name.to_string(),
+			remote: remote,
+			packets: packets,
+			handle: Some(handle),
+			running: running
+		}))
 	}
 
 	/// Send a packet to the server.
@@ -132,5 +143,18 @@ impl NetHandler {
 	/// Get the login name of the client used by the Master Server.
 	pub fn login_name(&self) -> String {
 		self.login_name.clone()
+	}
+
+	/// Returns true if the NetHandler is still connected to the server, otherwise false.
+	pub fn connected(&self) -> bool {
+		self.running.load(Ordering::Relaxed)
+	}
+}
+
+impl Drop for NetHandler {
+	fn drop(&mut self) {
+		self.running.store(false, Ordering::Relaxed);
+
+		self.handle.take().unwrap().join().expect("Could not join packet receiving thread.");
 	}
 }

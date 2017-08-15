@@ -1,4 +1,4 @@
-use std::sync::{Arc, Weak, Mutex};
+use std::sync::{Arc, Mutex};
 use super::nethandler::NetHandler;
 use packets::*;
 use std::collections::{HashMap, VecDeque};

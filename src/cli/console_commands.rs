@@ -1,14 +1,14 @@
 //! Handles the console input, notably processes commands entered by the user and relays them
 //! properly to the correct handler for them.
 use std::sync::mpsc::{self, Sender, Receiver};
-use std::io::{self, Read, BufRead};
+use std::io;
 use std::time::Duration;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::{self, JoinHandle};
 use std::collections::VecDeque;
 
-use cli::{Game, OfflineGame, OnlineGame, NetHandler, CONFIG};
+use cli::{Game, OfflineGame, NetHandler, CONFIG};
 use packets::*;
 
 pub struct Context {
@@ -184,8 +184,6 @@ pub struct Console {
 	receiver: Receiver<Vec<String>>,
 	/// Is the console still running? Used to terminate the input thread.
 	running: Arc<AtomicBool>,
-	/// Join Handle to ensure the Console never outlives the input thread.
-	handle: Option<JoinHandle<()>>,
 	/// The command on which the Console will be terminated.
 	exit_command: &'static str
 }
@@ -199,7 +197,7 @@ impl Console {
 
 		// Start the input thread.
 		let running_clone = running.clone();
-		let handle = thread::spawn(move || {
+		thread::spawn(move || {
 			while running_clone.load(Ordering::Relaxed) {
 				process_input_line(&sender);
 
@@ -210,7 +208,6 @@ impl Console {
 		Console {
 			receiver: receiver,
 			running: running,
-			handle: Some(handle),
 			exit_command: exit_command
 		}
 	}
