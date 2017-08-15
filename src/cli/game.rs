@@ -144,7 +144,14 @@ impl Game for OnlineGame {
 					}
 				}
 				else if button == Button::Right {
-					println!("Passing has not been implemented yet");
+					if self.board.turn() != self.piece {
+						println!("You cannot pass at the moment, because it's not your turn.");
+					}
+					else {
+						println!("Passing.");
+						self.board.pass();
+						self.nethandler.send(&Packet::Pass(self.opponent));
+					}
 				}
 			}
 		}
@@ -160,6 +167,15 @@ impl Game for OnlineGame {
 				}
 
 				self.board.place((x, y), self.piece.opposite());
+				true
+			},
+			&Packet::Pass(opponent) => {
+				if self.opponent != opponent {
+					return false;
+				}
+
+				self.board.pass();
+				println!("Your opponent has passed.");
 				true
 			}
 			_ => false

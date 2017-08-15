@@ -107,6 +107,25 @@ impl Game {
 					}
 				}
 			},
+			Packet::Pass(opponent_id) => {
+				let (player, opponent) = match self.player_opponent(piece) {
+					Some(po) => po,
+					None => return // One of the players has disconnected.
+				};
+
+				if opponent_id != opponent.id() {
+					return;
+				}
+
+				// Check that the player who tried to pass is the one whos turn it is.
+				let mut board_lock = self.board.lock().unwrap();
+				if board_lock.turn() == piece {
+					// Pass for the client who sent the packet and let the other client know that
+					// their opponent has passed.
+					board_lock.pass();
+					opponent.send(&Packet::Pass(player.id()));
+				}
+			}
 			_ => {}
 		}
 	}

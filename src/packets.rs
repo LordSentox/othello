@@ -57,6 +57,10 @@ pub enum Packet {
 	/// opponent. The server will never respond to this packet, since the client is supposed to
 	/// check the rules themselves aswell.
 	PlacePiece(ClientId, u8, u8),
+	/// When ingame with another player, this packet can be sent by the player whos turn it is.
+	/// Server->Client the id of the one passing is provided
+	/// Client->Server the id of the one the client is currently playing with is.
+	Pass(ClientId),
 	/// Message to or from another client. If it is in direction Server->Client, the ID of the client
 	/// that has sent the message is the id, in direction Client->Server it's the id of the client
 	/// it is directed at.
