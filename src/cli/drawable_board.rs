@@ -1,7 +1,7 @@
 use std::ops::{Deref, DerefMut};
 use board::*;
 use config::CONFIG;
-use sfml::graphics::{Color, Texture, Drawable, RenderTarget, RenderStates, Sprite, Transformable};
+use sfml::graphics::{Color, Texture, Drawable, RectangleShape, RenderTarget, RenderStates, Shape, Sprite, Transformable};
 
 /// Client ontly wrapper for the board, where the board has to be rendered.
 pub struct DrawableBoard {
@@ -146,8 +146,34 @@ impl Drawable for DrawableBoard {
 		// all shadows can later be drawn before all sprites.
 		let mut pieces: Vec<(Sprite, Option<Sprite>)> = Vec::new();
 
+		// TODO: This should probably better be handled by the running game, not the board,
+		// since it's better to only show your opportunities in an online game.
+		let opportunities = self.opportunities(self.turn());
+
+		// Convert the opportunities Vector into a Two-Dimensional vector, to reduce overhead
+		// in the loop. up ahead.
+		let mut opportunities2d = vec![vec![false; 8]; 8];
+		for (x, y) in opportunities {
+			opportunities2d[x as usize][y as usize] = true;
+		}
+
 		for x in 0..8 {
 			for y in 0..8 {
+				// If there is an opportunity for the current player here, show it.
+				if opportunities2d[x][y] == true {
+					let mut rect = RectangleShape::new();
+					rect.set_fill_color(&Color::rgba(0, 0, 0, 50));
+					rect.set_size2f(self.piece_size() as f32, self.piece_size() as f32);
+
+					let size = self.piece_size();
+					let pos_x = (x as u16 * size) as f32;
+					let pos_y = (y as u16 * size) as f32;
+					rect.set_position2f(pos_x, pos_y);
+
+					// An opportunity can be drawn directly to the board.
+					target.draw(&rect);
+				}
+
 				// Check if a piece is at this position and create it.
 				let mut sprite = match self.squares()[x][y] {
 					Some(Piece::White) => {
