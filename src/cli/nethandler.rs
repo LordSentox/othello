@@ -6,6 +6,7 @@ use remote::*;
 use std::net::{TcpStream, ToSocketAddrs};
 use std::collections::VecDeque;
 use std::io::Error as IOError;
+use std::io::ErrorKind as IOErrorKind;
 use std::time::Duration;
 
 pub type ArcRw<T> = Arc<RwLock<T>>;
@@ -72,7 +73,7 @@ impl NetHandler {
 
 		// Now that this sequence is over, a timeout is set on the read thread, so that it can be
 		// cancelled gracefully.
-		remote.set_timeout(Some(Duration::from_millis(100)), DirSocket::Read).expect("Could not set Socket read timeout.");
+		remote.set_timeout(Some(Duration::from_millis(500)), DirSocket::Read).expect("Could not set Socket read timeout.");
 		let remote = Arc::new(remote);
 		let packets: ArcRw<Vec<Weak<Mutex<VecDeque<Packet>>>>> = Arc::new(RwLock::new(Vec::new()));
 
@@ -90,6 +91,15 @@ impl NetHandler {
 						println!("The connection has been closed by the server.");
 						Packet::Disconnect
 					},
+					Err(PacketReadError::IOError(err)) => {
+						if let IOErrorKind::WouldBlock = err.kind() {
+							// This error is to be expected and can be ignored.
+							continue;
+						}
+
+						println!("Error reading packet: {:?}", err);
+						continue;
+					}
 					Err(err) => {
                         // An error occured. Ignore this packet.
                         println!("Error reading packet. {:?}", err);
