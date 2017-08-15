@@ -22,10 +22,10 @@ they should pop up.)
 ##### Starting a server:
 If you want to start a debug server, you can start one with:
 ```sh
-cargo run --bin server <port>
+cargo run --bin server
 ```
-with ```<port>``` being the port you want the server to listen to. There is no
-default port and at the moment there is no way this can be omitted.
+The port the server is going to listen to is specified in the server.toml.
+By default it will be 44942.
 
 ##### Starting a client and connecting:
 If you know a server, or have started one yourself, you will want to connect to
@@ -37,7 +37,6 @@ The client can again be started using cargo using:
 ```sh
 cargo run --bin client
 ```
-In this case, no extra argument is neccessary or possible.
 
 If you want to compile the game to run it without using cargo, you can use
 ```sh
