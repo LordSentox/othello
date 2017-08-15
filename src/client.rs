@@ -32,11 +32,6 @@ fn main() {
 
 	let console = Console::new("exit");
 	while console.running() {
-		// If the client is currently not running any games, the thread will block
-		// and wait for the next command. Otherwise this is obviously not possible,
-		// so the input is non-blocking.
-		// XXX: This will just return None, if the Sender has hung up at the moment.
-
 		// Handle the received commands, if any.
 		let blocking = ctx.games.is_empty();
 		console.handle_commands(&mut ctx, blocking);
