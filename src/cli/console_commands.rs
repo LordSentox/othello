@@ -1,7 +1,7 @@
 //! Handles the console input, notably processes commands entered by the user and relays them
 //! properly to the correct handler for them.
 use std::sync::mpsc::{self, Sender, Receiver};
-use std::io::{self, BufRead};
+use std::io::{self, Read, BufRead};
 use std::time::Duration;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -163,24 +163,19 @@ mod cmd {
 	}
 }
 
-fn process_input(sender: &Sender<Vec<String>>) {
-	let stdin = io::stdin();
-	let lines = stdin.lock().lines();
-	for line in lines {
-		let line = match line {
-			Ok(line) => line,
-			Err(err) => {
-				println!("Error reading command. {:?}", err);
-				continue;
-			}
-		};
+fn process_input_line(sender: &Sender<Vec<String>>) {
+	let mut line = String::new();
+	match io::stdin().read_line(&mut line) {
+		Ok(_) => {},
+		Err(err) => {
+			println!("Error reading command. {:?}", err);
+			return;
+		}
+	};
 
-		let command: Vec<String> = line.trim_right_matches("\n").split_whitespace().map(|ref part| { part.to_string() }).collect();
+	let command: Vec<String> = line.trim_right_matches("\n").split_whitespace().map(|ref part| { part.to_string() }).collect();
 
-		sender.send(command).unwrap();
-	}
-
-	thread::sleep(Duration::from_millis(50));
+	sender.send(command).unwrap();
 }
 
 pub struct Console {
@@ -206,8 +201,9 @@ impl Console {
 		let running_clone = running.clone();
 		let handle = thread::spawn(move || {
 			while running_clone.load(Ordering::Relaxed) {
-				println!("Still processing..");
-				process_input(&sender);
+				process_input_line(&sender);
+
+				thread::sleep(Duration::from_millis(50));
 			}
 		});
 
@@ -293,6 +289,10 @@ impl Drop for Console {
 		// Ask the input thread to terminate itself and wait until it is finished.
 		self.running.store(false, Ordering::Relaxed);
 
-		self.handle.take().unwrap().join().expect("Could not join input thread properly.");
+		// XXX: This simply doesn't work, because Rust has no support for read timeouts on stdin
+		// whatsoever. Putting the exit command directly into the read thread is also not an option,
+		// since that would still mean I cannot exit the console from anywhere else. So, damn the
+		// input thread.
+		// self.handle.take().unwrap().join().expect("Could not join input thread properly.");
 	}
 }
