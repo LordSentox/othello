@@ -112,7 +112,8 @@ pub struct OnlineGame {
 	opponent: ClientId,
 	nethandler: Arc<NetHandler>,
 	board: DrawableBoard,
-	window: RenderWindow
+	window: RenderWindow,
+	running: bool
 }
 
 impl OnlineGame {
@@ -124,7 +125,8 @@ impl OnlineGame {
 			opponent: opponent,
 			nethandler: nethandler,
 			board: board,
-			window: window
+			window: window,
+			running: true
 		}
 	}
 }
@@ -133,7 +135,11 @@ impl Game for OnlineGame {
 	fn handle_events(&mut self) {
 		for event in self.window.events() {
 			if let Event::Closed = event {
-				return;
+				self.running = false;
+
+				// Let the server know you are abandoning the game.
+				self.nethandler.send(&Packet::AbandonGame(self.opponent));
+				println!("You have abandoned the game.");
 			}
 			else if let Event::MouseButtonPressed {button, x, y} = event {
 				if button == Button::Left {
@@ -177,13 +183,22 @@ impl Game for OnlineGame {
 				self.board.pass();
 				println!("Your opponent has passed.");
 				true
+			},
+			&Packet::AbandonGame(opponent) => {
+				if self.opponent != opponent {
+					return false;
+				}
+
+				println!("Your opponent has abandoned the game.");
+				self.running = false;
+				true
 			}
 			_ => false
 		}
 	}
 
 	fn running(&self) -> bool {
-		true
+		self.running
 	}
 
 	fn draw(&mut self) {

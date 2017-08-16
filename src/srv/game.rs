@@ -1,4 +1,5 @@
 use std::sync::{Arc, Weak, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
 use board::*;
 use std::thread;
 use std::time::Duration;
@@ -12,7 +13,8 @@ pub struct Game {
     black: Weak<NetClient>,
     black_packets: Arc<Mutex<VecDeque<Packet>>>,
     white: Weak<NetClient>,
-    white_packets: Arc<Mutex<VecDeque<Packet>>>
+    white_packets: Arc<Mutex<VecDeque<Packet>>>,
+	abandoned: AtomicBool
 }
 
 impl Game {
@@ -45,7 +47,8 @@ impl Game {
             black: black,
             black_packets: black_packets,
             white: white,
-            white_packets: white_packets
+            white_packets: white_packets,
+			abandoned: AtomicBool::new(false)
         });
 
         // The Weak reference that will be returned. The Arc<Game> will be captured by the new thread.
@@ -125,6 +128,23 @@ impl Game {
 					board_lock.pass();
 					opponent.send(&Packet::Pass(player.id()));
 				}
+			},
+			Packet::AbandonGame(opponent_id) => {
+				// Note that whos turn it is doesn't matter here, so we just reference by blacks
+				// player instead.
+				let (black, white) = match self.player_opponent(Piece::Black) {
+					Some(bw) => bw,
+					None => return // One of the players has disconnected.
+				};
+
+				if black.id() == opponent_id {
+					self.abandoned.store(false, Ordering::Relaxed);
+					black.send(&Packet::AbandonGame(white.id()));
+				}
+				else if white.id() == opponent_id {
+					self.abandoned.store(false, Ordering::Relaxed);
+					white.send(&Packet::AbandonGame(black.id()));
+				}
 			}
 			_ => {}
 		}
@@ -154,7 +174,9 @@ impl Game {
 	}
 
     pub fn is_running(&self) -> bool {
-		// TODO: This should check if the clients may have abandoned the game or the game is over.
+		if self.abandoned.load(Ordering::Relaxed) {
+			return false;
+		}
 
 		// Check that both players are still connected.
 		self.white.upgrade().is_some() && self.black.upgrade().is_some()

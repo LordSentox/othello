@@ -61,6 +61,10 @@ pub enum Packet {
 	/// Server->Client the id of the one passing is provided
 	/// Client->Server the id of the one the client is currently playing with is.
 	Pass(ClientId),
+	/// Abandon a game. In direction Server->Client the client id is the one who has abandoned the
+	/// game, Client->Server it is the one the client is abandoning the game with.
+	/// The first client sending this packet will be considered to have lost the game.
+	AbandonGame(ClientId),
 	/// Message to or from another client. If it is in direction Server->Client, the ID of the client
 	/// that has sent the message is the id, in direction Client->Server it's the id of the client
 	/// it is directed at.
